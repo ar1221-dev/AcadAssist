@@ -1,0 +1,4 @@
+# AcadAssist - Minimal Initial Skeleton Requirements
+# Dependencies will be added incrementally at each development checkpoint.
+
+python-dotenv>=1.0.0
