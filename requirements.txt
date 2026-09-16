@@ -1,4 +1,4 @@
-# AcadAssist - Minimal Initial Skeleton Requirements
-# Dependencies will be added incrementally at each development checkpoint.
-
+# AcadAssist - Frontend & Application Requirements
 python-dotenv>=1.0.0
+streamlit>=1.30.0
+pillow>=10.0.0
