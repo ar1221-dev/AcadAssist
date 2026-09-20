@@ -12,7 +12,7 @@ Initial project setup.
 - **Knowledge Base**: Document processing (PDF, PPT, DOCX, TXT), text extraction, chunking, cleaning, metadata, and knowledge base pipelines.
 - **Assessment + Planning**: Adaptive quiz generation, difficulty management, history tracking, exam-aware quiz scheduling, daily planner, roadmap, and streak tracking.
 - **RAG + Study Intelligence**: Embeddings, vector retrieval, RAG pipeline, context construction, and personalized study analysis.
-- **Streamlit UI**: Interactive dashboard, navigation, user interface, and integration of backend modules.
+- **React UI**: Interactive dashboard, navigation, user interface, and integration of backend modules into modern React application (`frontend/`).
 
 ## Development Workflow
 
@@ -30,7 +30,7 @@ We follow a structured Git branching strategy:
 | **Person 2** | Knowledge Base | PDF/PPT/DOCX/TXT processing, text extraction, cleaning, chunking, metadata, pipeline | `feature/knowledge-base` |
 | **Person 3** | Assessment + Planning | Quiz system, difficulty levels, question generation, question history/no-repeat logic, exam-aware quiz scheduling, daily planner, roadmap, streak system | `feature/assessment-planning` |
 | **Person 4** | RAG + Study Intelligence | Embeddings, vector retrieval, RAG pipeline, context construction, study intelligence, personalized study analysis | `feature/rag-intelligence` |
-| **Person 5** | Streamlit UI | Streamlit application, dashboard, navigation, user interface, integration of backend modules into UI | `feature/streamlit-ui` |
+| **Person 5** | React UI | Modern React frontend (`frontend/`), dashboard, navigation, user interface, design system, backend integration | `react-ui` |
 
 ## Setup & Getting Started
 
