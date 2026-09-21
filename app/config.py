@@ -1,7 +1,7 @@
-"""Centralized configuration for AcadAssist Knowledge Base & RAG subsystem (Person 2).
+"""Centralized configuration for AcadAssist integrated backend.
 
-Integrates with the single shared application database and supports both production
-Azure integrations and explicit local testing providers.
+Supports Person 2 (Knowledge Base & RAG), Person 3 (Assessment Subsystem),
+and Person 4 (Study Intelligence & Planning) with unified settings.
 """
 
 from os import getenv
@@ -81,35 +81,45 @@ class Settings(BaseSettings):
     # Assessment Specific Settings (Person 3)
     assessment: AssessmentSettings = Field(default_factory=AssessmentSettings)
 
-
     # General Azure credentials (from .env.example)
     AZURE_ENDPOINT: str | None = None
     AZURE_API_KEY: str | None = None
 
-    # Azure Blob Storage Configuration
+    # Azure Blob Storage Configuration (Person 2)
     AZURE_STORAGE_CONNECTION_STRING: str | None = None
     AZURE_STORAGE_CONTAINER: str = "acadassist-documents"
     STORAGE_LOCAL_DIR: str = "./data/storage"
 
-    # Azure AI Search Configuration
+    # Azure AI Search Configuration (Person 2)
     AZURE_SEARCH_ENDPOINT: str | None = None
     AZURE_SEARCH_KEY: str | None = None
     AZURE_SEARCH_INDEX_NAME: str = "acadassist-knowledge-index"
 
-    # Embedding Service Configuration (Required: text-embedding-3-small, 1536 dimensions)
+    # Embedding Service Configuration (Person 2)
     AZURE_OPENAI_ENDPOINT: str | None = None
     AZURE_OPENAI_API_KEY: str | None = None
     OPENAI_API_KEY: str | None = None
     EMBEDDING_MODEL: str = "text-embedding-3-small"
     EMBEDDING_DIMENSIONS: int = 1536
 
-    # Document Chunking Configuration
+    # Document Chunking Configuration (Person 2)
     CHUNK_SIZE: int = 800
     CHUNK_OVERLAP: int = 150
     MAX_UPLOAD_SIZE_BYTES: int = 50 * 1024 * 1024  # 50 MB
     ALLOWED_EXTENSIONS: list[str] = Field(
         default_factory=lambda: [".pdf", ".ppt", ".pptx", ".docx", ".txt"]
     )
+
+    # Study Intelligence & Planning Configuration (Person 4)
+    DEFAULT_STUDY_TIME_MINUTES: int = 120
+    STRONG_MASTERY_THRESHOLD: float = 75.0
+    WEAK_MASTERY_THRESHOLD: float = 60.0
+    MASTERY_COMPLETION_THRESHOLD: float = 70.0
+
+    # Exam proximity rules for Study Intelligence (days before exam)
+    EXAM_PROXIMITY_URGENT_DAYS: int = 2
+    EXAM_PROXIMITY_WEAK_PRIORITY_DAYS: int = 7
+    EXAM_PROXIMITY_PREP_DAYS: int = 14
 
     model_config = SettingsConfigDict(
         env_file=str(BASE_DIR / ".env"),

@@ -102,15 +102,23 @@ class QuizAttempt(Base):
     """QuizAttempt model recording a student's completion of a quiz."""
 
     __tablename__ = "quiz_attempts"
+    __table_args__ = (
+        Index("ix_quiz_attempts_user_quiz", "user_id", "quiz_id"),
+        {"extend_existing": True},
+    )
 
     attempt_id = Column(String(36), primary_key=True, default=generate_uuid)
     quiz_id = Column(
-        String(36), ForeignKey("quizzes.quiz_id", ondelete="CASCADE"), nullable=False, index=True
+        String(36), ForeignKey("quizzes.quiz_id", ondelete="CASCADE"), nullable=True, index=True
     )
-    user_id = Column(String(36), nullable=False, index=True)
-    started_at = Column(DateTime, default=utc_now, nullable=False)
+    user_id = Column(String(64), nullable=False, index=True)
+    topic_id = Column(String(64), nullable=True, index=True)
+    started_at = Column(DateTime, default=utc_now, nullable=True)
     completed_at = Column(DateTime, nullable=True)
-    score = Column(Integer, nullable=False, default=0)  # Number of correct answers (e.g. 7)
+    score = Column(Integer, nullable=True, default=0)  # Number of correct answers (e.g. 7)
+    score_percentage = Column(Float, nullable=True, default=0.0)
+    total_questions = Column(Integer, nullable=True, default=0)
+    correct_answers = Column(Integer, nullable=True, default=0)
 
     # Relationships
     quiz = relationship("Quiz", back_populates="attempts")
@@ -120,9 +128,6 @@ class QuizAttempt(Base):
         cascade="all, delete-orphan",
     )
 
-    __table_args__ = (
-        Index("ix_quiz_attempts_user_quiz", "user_id", "quiz_id"),
-    )
 
 
 class QuestionAttempt(Base):

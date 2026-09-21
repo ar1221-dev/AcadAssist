@@ -1,5 +1,6 @@
-"""FastAPI dependencies for Person 2 routes."""
+"""FastAPI dependencies for AcadAssist API routes."""
 
+from collections.abc import Generator
 from fastapi import Depends
 from sqlalchemy.orm import Session
 
@@ -44,3 +45,14 @@ def get_processing_service(
         embedding_service=embedding,
         search_service=search,
     )
+
+
+__all__ = [
+    "get_db",
+    "get_storage",
+    "set_storage_service",
+    "get_search",
+    "set_search_service",
+    "get_embedding",
+    "get_processing_service",
+]

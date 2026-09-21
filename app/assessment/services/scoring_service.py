@@ -172,7 +172,11 @@ class ScoringService:
             started_at=quiz.created_at,
             completed_at=now,
             score=score,
+            score_percentage=percentage,
+            total_questions=total_questions,
+            correct_answers=score,
         )
+
 
         db.add(quiz_attempt)
         db.flush()

@@ -1,4 +1,4 @@
-"""Schemas package."""
+"""Schemas package exports."""
 
 from app.schemas.document import (
     DocumentListResponse,
@@ -12,6 +12,18 @@ from app.schemas.knowledge import (
     KnowledgeSearchResponse,
     KnowledgeSearchResult,
 )
+from app.schemas.study import (
+    ProgressResponse,
+    RecommendationItem,
+    RecommendationsResponse,
+    StudyPlanCreateRequest,
+    StudyPlanResponse,
+    StudyTaskResponse,
+    TaskUpdateRequest,
+    TodayPlanResponse,
+    WeeklyReportCreateRequest,
+    WeeklyReportResponse,
+)
 
 __all__ = [
     "DocumentResponse",
@@ -22,4 +34,14 @@ __all__ = [
     "KnowledgeSearchRequest",
     "KnowledgeSearchResponse",
     "KnowledgeSearchResult",
+    "ProgressResponse",
+    "RecommendationItem",
+    "RecommendationsResponse",
+    "StudyPlanCreateRequest",
+    "StudyPlanResponse",
+    "StudyTaskResponse",
+    "TodayPlanResponse",
+    "TaskUpdateRequest",
+    "WeeklyReportCreateRequest",
+    "WeeklyReportResponse",
 ]

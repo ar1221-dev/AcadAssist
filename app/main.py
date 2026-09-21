@@ -52,6 +52,7 @@ def create_app() -> FastAPI:
             "subsystems": {
                 "knowledge_rag": "operational",
                 "assessment": "operational",
+                "study_intelligence": "operational",
             },
             "embedding_model": settings.EMBEDDING_MODEL,
             "embedding_dimensions": settings.EMBEDDING_DIMENSIONS,

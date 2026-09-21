@@ -2,7 +2,9 @@
 
 import os
 import shutil
+import sys
 import tempfile
+from pathlib import Path
 from typing import Generator
 import pytest
 from fastapi.testclient import TestClient
@@ -10,18 +12,25 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+# Ensure root directory is on sys.path
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 from app.api.deps import get_db, set_search_service, set_storage_service
 from app.core.database import get_db as core_get_db
 from app.config import settings
 from app.database.base import Base
 from app.models.document import Chunk, Document
-from app.models.shared import Course, Subject, User
+from app.models.shared import Course, Exam, QuizAttempt, Subject, Topic, TopicMastery, User
+from app.models.study_plan import StudyPlan, StudyTask
+from app.models.weekly_report import WeeklyReport
 from app.services.rag.knowledge import set_search_service as set_rag_search_service
 from app.services.rag.search import AzureSearchService, LocalHybridSearchIndex
 from app.services.storage.azure_storage import AzureStorageService
 from app.services.storage.local_storage import LocalStorageService
 
-# Ensure models from all subsystems are imported so Base.metadata contains all tables
+# Ensure all subsystem models are registered on Base.metadata
 import app.models  # noqa: F401
 try:
     import app.assessment.models  # noqa: F401
@@ -29,7 +38,6 @@ except ImportError:
     pass
 
 from app.main import app
-
 
 
 @pytest.fixture(scope="session", autouse=True)

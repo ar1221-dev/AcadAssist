@@ -1,4 +1,4 @@
-"""Shared AcadAssist application entities.
+"""Shared AcadAssist application entities and models.
 
 These entities map directly to the single shared application database tables.
 All models use extend_existing=True to guarantee no duplicate tables are created.
@@ -64,7 +64,24 @@ class Topic(Base):
     estimated_minutes = Column(Integer, nullable=False, default=60)
 
 
-from app.assessment.models import Exam
+class TopicMastery(Base):
+    """Authoritative topic mastery records produced by Person 3 / consumed by Person 4."""
 
-__all__ = ["User", "Course", "Subject", "Topic", "Exam"]
+    __tablename__ = "topic_mastery"
+    __table_args__ = {"extend_existing": True}
 
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    user_id = Column(String(64), nullable=False, index=True)
+    topic_id = Column(String(64), nullable=False, index=True)
+    mastery_percentage = Column(Float, nullable=False, default=0.0)
+    quizzes_attempted = Column(Integer, nullable=False, default=0)
+    quizzes_passed = Column(Integer, nullable=False, default=0)
+    is_weak = Column(Boolean, nullable=False, default=False)
+    is_completed = Column(Boolean, nullable=False, default=False)
+    last_assessed_at = Column(DateTime, nullable=True)
+
+
+# Re-export canonical Exam and QuizAttempt entities from Person 3 assessment subsystem
+from app.assessment.models import Exam, QuizAttempt
+
+__all__ = ["User", "Course", "Subject", "Topic", "Exam", "TopicMastery", "QuizAttempt"]
