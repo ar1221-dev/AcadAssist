@@ -64,17 +64,7 @@ class Topic(Base):
     estimated_minutes = Column(Integer, nullable=False, default=60)
 
 
-class Exam(Base):
-    """Exam entity owned by Person 3 / shared database."""
+from app.assessment.models import Exam
 
-    __tablename__ = "exams"
-    __table_args__ = {"extend_existing": True}
+__all__ = ["User", "Course", "Subject", "Topic", "Exam"]
 
-    exam_id = Column(String(36), primary_key=True, default=generate_uuid)
-    user_id = Column(String(64), nullable=False, index=True)
-    course_id = Column(String(64), nullable=False, index=True)
-    subject_id = Column(String(64), nullable=False, index=True)
-    title = Column(String(255), nullable=False)
-    exam_date = Column(Date, nullable=False, index=True)
-    target_score = Column(Float, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)

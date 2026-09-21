@@ -3,21 +3,33 @@
 import os
 import shutil
 import tempfile
+from typing import Generator
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.api.deps import get_db, set_search_service, set_storage_service
+from app.core.database import get_db as core_get_db
 from app.config import settings
 from app.database.base import Base
-from app.main import app
 from app.models.document import Chunk, Document
 from app.models.shared import Course, Subject, User
 from app.services.rag.knowledge import set_search_service as set_rag_search_service
 from app.services.rag.search import AzureSearchService, LocalHybridSearchIndex
 from app.services.storage.azure_storage import AzureStorageService
 from app.services.storage.local_storage import LocalStorageService
+
+# Ensure models from all subsystems are imported so Base.metadata contains all tables
+import app.models  # noqa: F401
+try:
+    import app.assessment.models  # noqa: F401
+except ImportError:
+    pass
+
+from app.main import app
+
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -30,31 +42,26 @@ def test_environment():
     shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-from sqlalchemy.pool import StaticPool
+TEST_DATABASE_URL = "sqlite:///:memory:"
+
+test_engine = create_engine(
+    TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=test_engine)
 
 
-@pytest.fixture
-def db_engine():
-    """Create in-memory SQLite engine for isolated test runs."""
-    engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    Base.metadata.create_all(bind=engine)
-    yield engine
-    Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture
-def db_session(db_engine):
-    """Yield a transactional database session for tests."""
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+@pytest.fixture(scope="function")
+def db_session() -> Generator[Session, None, None]:
+    """Create fresh database tables for each test function and teardown afterwards."""
+    Base.metadata.create_all(bind=test_engine)
     session = TestingSessionLocal()
     try:
         yield session
     finally:
         session.close()
+        Base.metadata.drop_all(bind=test_engine)
 
 
 @pytest.fixture
@@ -74,12 +81,18 @@ def search_service():
     return service
 
 
-@pytest.fixture
-def client(db_session, local_storage, search_service):
-    """FastAPI TestClient with overridden dependencies."""
+@pytest.fixture(scope="function")
+def client(db_session: Session, test_environment) -> Generator[TestClient, None, None]:
+    """FastAPI TestClient with overridden dependencies for all subsystems."""
+    local_storage = LocalStorageService(base_dir=test_environment)
     azure_storage = AzureStorageService()
     azure_storage.fallback_storage = local_storage
     set_storage_service(azure_storage)
+
+    service = AzureSearchService()
+    service.local_index = LocalHybridSearchIndex()
+    set_search_service(service)
+    set_rag_search_service(service)
 
     def override_get_db():
         try:
@@ -88,6 +101,7 @@ def client(db_session, local_storage, search_service):
             pass
 
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[core_get_db] = override_get_db
 
     with TestClient(app) as test_client:
         yield test_client
