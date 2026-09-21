@@ -1,0 +1,3 @@
+from app.api.routes.materials import router as materials_router
+
+__all__ = ["materials_router"]

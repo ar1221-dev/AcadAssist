@@ -1,0 +1,12 @@
+=== Linear Algebra Lecture Notes ===
+Subject: Mathematics
+Course: MATH201
+
+--- Section 1: Vector Spaces ---
+A vector space over a field F is a set V together with two operations:
+vector addition and scalar multiplication.
+
+--- Section 2: Eigenvalues and Eigenvectors ---
+Let A be an n-by-n matrix. A non-zero vector v is an eigenvector of A
+if Av = lambda * v for some scalar lambda (the eigenvalue).
+Characteristic equation: det(A - lambda * I) = 0.
