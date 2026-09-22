@@ -1,4 +1,18 @@
-# AcadAssist - Minimal Initial Skeleton Requirements
-# Dependencies will be added incrementally at each development checkpoint.
+# AcadAssist - Person 1 (Azure + Foundry V1) Dependencies
 
-python-dotenv>=1.0.0
+# Core API & Configuration
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+python-dotenv>=1.0.1
+
+# Azure SDKs & Identity
+azure-ai-projects>=2.3.0
+azure-identity>=1.19.0
+azure-storage-blob>=12.24.0
+azure-search-documents>=12.0.0
+
+# Testing
+pytest>=8.3.0
+httpx>=0.28.0
