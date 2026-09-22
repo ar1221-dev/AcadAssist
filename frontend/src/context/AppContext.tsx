@@ -9,7 +9,8 @@ import {
   type Subject,
 } from '../data/mockData';
 import {
-  fetchWeakTopics, fetchStudyRecommendation, type WeakTopic, type StudyRecommendation,
+  fetchWeakTopics, fetchStudyRecommendation, fetchTodayPlan, updateTaskStatus,
+  type WeakTopic, type StudyRecommendation,
 } from '../services/api';
 
 export interface Course {
@@ -167,9 +168,28 @@ export function AppProvider({children}:{children:ReactNode}) {
 
   const reloadWeakTopics=useCallback(async()=>{
     try {
-      const [topics, rec] = await Promise.all([fetchWeakTopics(), fetchStudyRecommendation()]);
+      const [topics, rec, todayData] = await Promise.all([
+        fetchWeakTopics(),
+        fetchStudyRecommendation(),
+        fetchTodayPlan(),
+      ]);
       setWeakTopics(topics);
       setStudyRecommendation(rec);
+      if (todayData?.tasks && todayData.tasks.length > 0) {
+        setTodayPlan(todayData.tasks.map(t => ({
+          id: t.task_id,
+          time: t.start_time || '09:00 AM',
+          title: t.title,
+          description: t.description || '',
+          subject: t.subject_id || 'Academic Study',
+          tag: 'STUDY',
+          duration: `${t.duration_minutes} min`,
+          status: t.status === 'completed' ? 'completed' : 'pending',
+          actionLabel: 'Study',
+          color: '#315c8b',
+          icon: 'calendar',
+        })));
+      }
     } catch {
       // Fallback kept safe and clean
     }
@@ -222,8 +242,22 @@ export function AppProvider({children}:{children:ReactNode}) {
   },[settings.accentColor,settings.fontSize]);
 
   const updateUser=useCallback((patch:Partial<UserProfile>)=>setUser(p=>({...p,...patch})),[]);
-  const togglePlanItem=useCallback((id:string)=>setTodayPlan(p=>p.map(x=>x.id===id?{...x,status:x.status==='completed'?'pending':'completed'}:x)),[]);
-  const togglePlannerTask=useCallback((id:string)=>setPlannerTasks(p=>p.map(x=>x.id===id?{...x,completed:!x.completed}:x)),[]);
+  const togglePlanItem=useCallback((id:string)=>setTodayPlan(p=>p.map(x=>{
+    if (x.id === id) {
+      const nextStatus = x.status === 'completed' ? 'pending' : 'completed';
+      updateTaskStatus(id, nextStatus).catch(() => {});
+      return {...x, status: nextStatus};
+    }
+    return x;
+  })),[]);
+  const togglePlannerTask=useCallback((id:string)=>setPlannerTasks(p=>p.map(x=>{
+    if (x.id === id) {
+      const nextCompleted = !x.completed;
+      updateTaskStatus(id, nextCompleted ? 'completed' : 'pending').catch(() => {});
+      return {...x, completed: nextCompleted};
+    }
+    return x;
+  })),[]);
   const toggleGoal=useCallback((id:string)=>setStudyGoals(p=>p.map(x=>x.id===id?{...x,completed:!x.completed}:x)),[]);
   const addChatMessage=useCallback((role:'user'|'assistant',text:string)=>setChatHistory(p=>[...p,{role,text,time:new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}]),[]);
   const clearChatHistory=useCallback(()=>setChatHistory([]),[]);

@@ -41,9 +41,9 @@ export default function Assistant() {
 
   // Preload prompt and material context from URL if navigated from Knowledge / Assessment
   useEffect(() => {
-    const rawId = params.get('materialId') || params.get('material');
-    if (rawId) {
-      setMaterialId(rawId);
+    const rawId = params.get('materialId');
+    if (rawId && rawId.trim()) {
+      setMaterialId(rawId.trim());
     }
     const rawSubject = params.get('subject');
     if (rawSubject) {

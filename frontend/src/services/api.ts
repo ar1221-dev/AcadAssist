@@ -371,6 +371,89 @@ export async function uploadDocument(
   };
 }
 
+// Person 4: Study Planner and Tasks Endpoints (/api/plans, /api/plans/today, /api/tasks/{task_id})
+export interface BackendStudyTask {
+  task_id: string;
+  study_plan_id?: string;
+  user_id: string;
+  course_id?: string;
+  subject_id?: string;
+  topic_id?: string;
+  title: string;
+  description?: string;
+  scheduled_date: string;
+  start_time?: string;
+  duration_minutes: number;
+  priority: string;
+  status: string;
+}
+
+export interface BackendTodayPlan {
+  date: string;
+  user_id: string;
+  total_tasks: number;
+  total_scheduled_minutes: number;
+  completed_minutes: number;
+  tasks: BackendStudyTask[];
+  isDemo?: boolean;
+}
+
+export async function fetchTodayPlan(userId = 'default_student_user'): Promise<BackendTodayPlan | null> {
+  try {
+    const res = await request<BackendTodayPlan>(`/api/plans/today?user_id=${encodeURIComponent(userId)}`);
+    return { ...res, isDemo: false };
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchStudyPlans(userId = 'default_student_user'): Promise<any[] | null> {
+  try {
+    return await request<any[]>(`/api/plans?user_id=${encodeURIComponent(userId)}`);
+  } catch {
+    return null;
+  }
+}
+
+export async function createStudyPlan(payload: {
+  userId?: string;
+  startDate: string;
+  endDate: string;
+  availableMinutesPerDay?: number;
+}): Promise<any | null> {
+  try {
+    return await request('/api/plans', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: payload.userId || 'default_student_user',
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+        available_minutes_per_day: payload.availableMinutesPerDay || 120,
+      }),
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function updateTaskStatus(
+  taskId: string,
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped',
+  userId = 'default_student_user'
+): Promise<BackendStudyTask | null> {
+  try {
+    return await request<BackendStudyTask>(
+      `/api/tasks/${encodeURIComponent(taskId)}?user_id=${encodeURIComponent(userId)}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ status }),
+      }
+    );
+  } catch {
+    return null;
+  }
+}
+
 export async function chatWithAssistant(
   message: string,
   context?: { materialId?: string; subject?: string }

@@ -381,12 +381,12 @@ export const UPCOMING_DEADLINES: Deadline[] = [
 ];
 
 export const KNOWLEDGE_MATERIALS: KnowledgeMaterial[] = [
-  { name: 'OS_Unit3_Deadlocks_and_Prevention.pdf', subject: 'Operating Systems', type: 'PDF', size: '2.4 MB', addedOn: '18 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: true, isDemo: true },
-  { name: 'CN_Transport_Layer_TCP_UDP.docx', subject: 'Computer Networks', type: 'DOCX', size: '1.2 MB', addedOn: '16 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: true, isDemo: true },
-  { name: 'DBMS_Relational_Algebra_and_SQL.pptx', subject: 'Database Management Systems', type: 'PPT', size: '4.8 MB', addedOn: '14 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
-  { name: 'DSA_Graph_Traversals_BFS_DFS.pdf', subject: 'Data Structures & Algorithms', type: 'PDF', size: '3.1 MB', addedOn: '12 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
-  { name: 'ML_Linear_and_Logistic_Regression.pdf', subject: 'Machine Learning', type: 'PDF', size: '2.8 MB', addedOn: '09 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
-  { name: 'Python_OOP_and_Exception_Handling.txt', subject: 'Python Programming', type: 'TXT', size: '85 KB', addedOn: '06 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
+  { id: 'doc-os-deadlocks-unit3', name: 'OS_Unit3_Deadlocks_and_Prevention.pdf', subject: 'Operating Systems', type: 'PDF', size: '2.4 MB', addedOn: '18 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: true, isDemo: true },
+  { id: 'doc-cn-transport-layer', name: 'CN_Transport_Layer_TCP_UDP.docx', subject: 'Computer Networks', type: 'DOCX', size: '1.2 MB', addedOn: '16 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: true, isDemo: true },
+  { id: 'doc-dbms-relational-sql', name: 'DBMS_Relational_Algebra_and_SQL.pptx', subject: 'Database Management Systems', type: 'PPT', size: '4.8 MB', addedOn: '14 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
+  { id: 'doc-dsa-graph-traversals', name: 'DSA_Graph_Traversals_BFS_DFS.pdf', subject: 'Data Structures & Algorithms', type: 'PDF', size: '3.1 MB', addedOn: '12 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
+  { id: 'doc-ml-linear-logistic', name: 'ML_Linear_and_Logistic_Regression.pdf', subject: 'Machine Learning', type: 'PDF', size: '2.8 MB', addedOn: '09 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
+  { id: 'doc-python-oop-exceptions', name: 'Python_OOP_and_Exception_Handling.txt', subject: 'Python Programming', type: 'TXT', size: '85 KB', addedOn: '06 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
 ];
 
 export const RECENT_ACTIVITIES: Activity[] = [

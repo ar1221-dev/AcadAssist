@@ -150,7 +150,11 @@ export default function Knowledge() {
   };
 
   const askAi = (m: Material) => {
-    navigate(`/assistant?materialId=${encodeURIComponent(m.id || m.name)}&subject=${encodeURIComponent(m.subject)}`);
+    if (!m.id || !m.id.trim()) {
+      pushToast('Cannot Ask AI: Document ID is missing', 'error');
+      return;
+    }
+    navigate(`/assistant?materialId=${encodeURIComponent(m.id)}&subject=${encodeURIComponent(m.subject)}`);
   };
 
   const generate = (m: Material, kind: 'Summary' | 'AI Notes' | 'Exam Notes' | 'Easy Explanation') => {
@@ -417,7 +421,8 @@ export default function Knowledge() {
                 <button
                   className="btn subtle text-xs"
                   onClick={() => askAi(m)}
-                  title="Query AI with this document context"
+                  disabled={!m.id}
+                  title={m.id ? "Query AI with this document context" : "Cannot Ask AI: Document ID is missing"}
                 >
                   <MessageSquare size={13} /> Ask AI
                 </button>
@@ -560,7 +565,12 @@ export default function Knowledge() {
         {preview && <DocumentPreview material={preview} />}
         {preview && (
           <div className="modal-actions">
-            <button className="btn secondary" onClick={() => askAi(preview)}>
+            <button
+              className="btn secondary"
+              onClick={() => askAi(preview)}
+              disabled={!preview.id}
+              title={preview.id ? "Ask AI about this document" : "Cannot Ask AI: Document ID is missing"}
+            >
               <MessageSquare size={14} /> Ask AI about this document
             </button>
             <button className="btn secondary" onClick={() => download(preview)}>
