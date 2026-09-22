@@ -165,13 +165,13 @@ export default function Dashboard() {
           {nextExam && (
             <div className="card p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-l-4 border-l-orange-500">
               <div className="flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-950/40 text-orange-600 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400 flex items-center justify-center flex-shrink-0">
                   <AlertTriangle size={20} />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="eyebrow text-orange-600">UPCOMING EXAM ALERT</span>
-                    <span className="soft-badge bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">
+                    <span className="eyebrow text-orange-600 dark:text-orange-400">UPCOMING EXAM ALERT</span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[.62rem] font-extrabold bg-orange-100 dark:bg-orange-950/60 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-800/40">
                       {nextExam.daysLeft} days remaining
                     </span>
                   </div>
@@ -220,7 +220,7 @@ export default function Dashboard() {
                       <span className="text-[.65rem] font-bold text-[var(--color-text-muted)] uppercase">
                         {wt.subject}
                       </span>
-                      <span className="text-xs font-extrabold text-red-600 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded-md">
+                      <span className="text-xs font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md">
                         {wt.accuracyScore}% score
                       </span>
                     </div>
@@ -309,7 +309,7 @@ export default function Dashboard() {
                     <div className="min-w-0">
                       <b className="text-xs text-[var(--color-text-dark)] truncate block">{m.name}</b>
                       <small className="text-[.65rem] text-[var(--color-text-muted)] block">
-                        {m.subject} · {m.size} · Status: <span className="text-green-600 font-semibold">{m.status}</span>
+                        {m.subject} · {m.size} · Status: <span className="text-green-600 dark:text-green-400 font-semibold">{m.status}</span>
                       </small>
                     </div>
                   </div>
@@ -432,7 +432,7 @@ export default function Dashboard() {
               <div className="ai-icon">
                 <Sparkles size={18} />
               </div>
-              <span className="text-[.6rem] font-bold text-[var(--color-text-muted)] bg-[var(--color-green-light)] text-[var(--color-green-accent)] px-2 py-0.5 rounded">
+              <span className="text-[.6rem] font-bold bg-[var(--color-green-light)] text-[var(--color-green-accent)] px-2 py-0.5 rounded">
                 Azure AI Ready
               </span>
             </div>

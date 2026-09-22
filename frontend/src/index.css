@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *, .dark, .dark *));
+
 /* ─── Design Tokens (Custom Properties) ──────────────────────────────────────── */
 @theme {
   --color-sidebar-bg: #0f1a14;
@@ -557,7 +559,7 @@ input, select, textarea { font-family: inherit; }
 @media(max-width:600px){.topbar-search{min-width:0}.theme-btn{display:none}.page-hero{padding:20px}.page-hero h1{font-size:1.75rem}.subject-grid,.form-grid,.option-grid,.check-grid{grid-template-columns:1fr}.toolbar{align-items:stretch}.search-box{min-width:100%}.select{width:100%}.notification-panel{position:fixed;right:12px;left:12px;width:auto}.dashboard-grid{gap:14px}.progress-wheel{width:115px;height:115px}.progress-wheel>div{width:84px;height:84px}}
 
 /* ─── Production interaction layer ───────────────────────────────────────── */
-body[data-theme='dark'], html[data-theme='dark'] {
+body[data-theme='dark'], html[data-theme='dark'], html.dark, body.dark {
   --color-page-bg: #111713;
   --color-card-bg: #18211c;
   --color-card-border: #2b3a31;

@@ -510,7 +510,7 @@ export default function Assessment() {
               <div>
                 <div className="flex justify-between items-start mb-2">
                   <span className="soft-badge text-[.65rem]">{wt.subject}</span>
-                  <span className="text-xs font-bold text-red-600 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded">
+                  <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded">
                     {wt.accuracyScore}% score
                   </span>
                 </div>
@@ -519,7 +519,7 @@ export default function Assessment() {
                   {wt.recommendedAction}
                 </p>
                 {wt.examName && (
-                  <div className="flex items-center gap-1.5 text-xs text-orange-600 font-semibold mt-2.5">
+                  <div className="flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400 font-semibold mt-2.5">
                     <AlertTriangle size={13} /> {wt.examName} in {wt.daysToExam} days
                   </div>
                 )}

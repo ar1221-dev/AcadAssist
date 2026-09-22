@@ -222,7 +222,7 @@ export default function Knowledge() {
         </div>
 
         <div className="card p-3.5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0">
             <CheckCircle2 size={18} />
           </div>
           <div>
@@ -234,7 +234,7 @@ export default function Knowledge() {
         </div>
 
         <div className="card p-3.5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center flex-shrink-0">
             <BookOpen size={18} />
           </div>
           <div>
@@ -246,7 +246,7 @@ export default function Knowledge() {
         </div>
 
         <div className="card p-3.5 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center flex-shrink-0">
             <Database size={18} />
           </div>
           <div>

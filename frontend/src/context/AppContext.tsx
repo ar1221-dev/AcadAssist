@@ -160,7 +160,16 @@ export function AppProvider({children}:{children:ReactNode}) {
   const [toasts,setToasts]=useState<Toast[]>([]);
   const [subjects,setSubjects]=useState<Subject[]>(()=>readStorage('acadassist.subjects',structuredClone(SUBJECTS)));
   const [sidebarOpen,setSidebarOpen]=useState(false);
-  const [settings,setSettings]=useState<AppState['settings']>(()=>({...defaultSettings,...readStorage('acadassist.settings',defaultSettings)}));
+  const [settings,setSettings]=useState<AppState['settings']>(()=>{
+    const stored = readStorage<Partial<AppState['settings']>>('acadassist.settings', {});
+    // Ensure the app starts in light theme by default unless explicitly saved as dark or user changes it
+    const theme: AppState['settings']['theme'] = stored.theme === 'dark' ? 'dark' : 'light';
+    return {
+      ...defaultSettings,
+      ...stored,
+      theme,
+    };
+  });
   
   // Weak topics and study recommendations behind service layer interface
   const [weakTopics,setWeakTopics]=useState<WeakTopic[]>([]);
@@ -219,6 +228,13 @@ export function AppProvider({children}:{children:ReactNode}) {
       const t = dark ? 'dark' : 'light';
       document.body.dataset.theme=t;
       root.dataset.theme=t;
+      if (dark) {
+        root.classList.add('dark');
+        document.body.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+        document.body.classList.remove('dark');
+      }
     };
 
     if(settings.theme==='system'){

@@ -184,7 +184,7 @@ export default function Planner() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 my-2">
           {/* Step 1: Exam */}
           <div className="p-3 rounded-xl bg-[var(--color-page-bg)] border border-[var(--color-card-border)]">
-            <small className="text-[.62rem] text-orange-600 font-bold uppercase block">1. Target Exam</small>
+            <small className="text-[.62rem] text-orange-600 dark:text-orange-400 font-bold uppercase block">1. Target Exam</small>
             <b className="text-xs text-[var(--color-text-dark)] block mt-0.5">
               {nextExam?.examName || 'Operating Systems Midterm'}
             </b>
@@ -195,11 +195,11 @@ export default function Planner() {
 
           {/* Step 2: Weak Topic */}
           <div className="p-3 rounded-xl bg-[var(--color-page-bg)] border border-[var(--color-card-border)]">
-            <small className="text-[.62rem] text-red-600 font-bold uppercase block">2. Identified Weak Topic</small>
+            <small className="text-[.62rem] text-red-600 dark:text-red-400 font-bold uppercase block">2. Identified Weak Topic</small>
             <b className="text-xs text-[var(--color-text-dark)] block mt-0.5">
               {primaryWeak?.topic || 'Deadlocks & Coffman Conditions'}
             </b>
-            <span className="text-[.65rem] text-red-600 font-bold block mt-0.5">
+            <span className="text-[.65rem] text-red-600 dark:text-red-400 font-bold block mt-0.5">
               Current accuracy: {primaryWeak?.accuracyScore || 58}% (Diagnostic sample)
             </span>
           </div>
