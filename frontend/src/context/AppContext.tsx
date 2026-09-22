@@ -8,6 +8,9 @@ import {
   type UserProfile, type StudyPlanItem, type PlannerTask, type KnowledgeMaterial, type ChatMessage,
   type Subject,
 } from '../data/mockData';
+import {
+  fetchWeakTopics, fetchStudyRecommendation, type WeakTopic, type StudyRecommendation,
+} from '../services/api';
 
 export interface Course {
   id: string; name: string; code: string; category: string; description: string;
@@ -22,28 +25,56 @@ export interface Notification { id: string; title: string; message: string; type
 export interface Toast { id: string; message: string; type: 'success'|'error'|'info'; }
 
 const COURSES: Course[] = [
-  {id:'dsa',name:'Data Structures & Algorithms',code:'CSE-201',category:'Computer Science',description:'Core data structures, algorithms, complexity and problem solving.',topics:['Arrays & Strings','Linked Lists','Stacks & Queues','Trees','Graphs','Sorting & Searching'],progress:0,enrolled:false,level:'Intermediate',color:'#2d5f47',estimatedHours:42},
-  {id:'os',name:'Operating Systems',code:'CSE-302',category:'Computer Science',description:'Processes, memory, scheduling, file systems and concurrency.',topics:['Processes','CPU Scheduling','Memory Management','Deadlocks','File Systems','Synchronization'],progress:61,enrolled:true,level:'Intermediate',color:'#315c8b',estimatedHours:36},
-  {id:'cn',name:'Computer Networks',code:'CSE-304',category:'Computer Science',description:'Networking fundamentals from physical transmission to application protocols.',topics:['Data Link','Network Layer','Transport Layer','Application Layer','Security'],progress:43,enrolled:true,level:'Intermediate',color:'#8b5a31',estimatedHours:34},
-  {id:'dbms',name:'Database Management Systems',code:'CSE-305',category:'Computer Science',description:'Relational models, SQL, normalization, transactions and indexing.',topics:['ER Models','SQL','Normalization','Transactions','Indexing'],progress:28,enrolled:true,level:'Intermediate',color:'#6a4c93',estimatedHours:30},
-  {id:'ml',name:'Machine Learning',code:'CSE-401',category:'AI & ML',description:'Supervised and unsupervised learning with practical model intuition.',topics:['Regression','KNN','SVM','Trees','Clustering','PCA'],progress:18,enrolled:false,level:'Advanced',color:'#a14b5d',estimatedHours:48},
-  {id:'python',name:'Python Programming',code:'CS-101',category:'Programming',description:'Python fundamentals, functions, collections, files and object-oriented programming.',topics:['Syntax','Functions','Collections','OOP','Files','Modules'],progress:0,enrolled:false,level:'Beginner',color:'#b17b24',estimatedHours:24},
+  {id:'os',name:'Operating Systems',code:'CSE-302',category:'Computer Science',description:'Processes, CPU scheduling, deadlocks, memory management and file systems.',topics:['Processes & Threads','CPU Scheduling','Memory Management','Deadlocks','File Systems','Virtual Memory'],progress:61,enrolled:true,level:'Intermediate',color:'#315c8b',estimatedHours:36},
+  {id:'cn',name:'Computer Networks',code:'CSE-304',category:'Computer Science',description:'Networking fundamentals from physical transmission to application protocols.',topics:['Data Link','Network Layer & IP','Transport Layer (TCP/UDP)','Application Layer','Network Security'],progress:43,enrolled:true,level:'Intermediate',color:'#8b5a31',estimatedHours:34},
+  {id:'dbms',name:'Database Management Systems',code:'CSE-305',category:'Computer Science',description:'Relational models, SQL, normalization, transactions and B+ tree indexing.',topics:['ER Models','SQL Queries','Normalization (1NF-BCNF)','Transactions & ACID','Indexing & B+ Trees'],progress:28,enrolled:true,level:'Intermediate',color:'#6a4c93',estimatedHours:30},
+  {id:'dsa',name:'Data Structures & Algorithms',code:'CSE-201',category:'Computer Science',description:'Core data structures, algorithms, asymptotic complexity and problem solving.',topics:['Arrays & Strings','Linked Lists','Stacks & Queues','Trees & AVL','Graphs (BFS/DFS)','Sorting & Searching'],progress:52,enrolled:true,level:'Intermediate',color:'#2d5f47',estimatedHours:42},
+  {id:'ml',name:'Machine Learning',code:'CSE-401',category:'AI & ML',description:'Supervised and unsupervised learning with practical model intuition.',topics:['Linear Regression','Logistic Regression','Decision Trees','SVM','Clustering','Neural Networks'],progress:18,enrolled:false,level:'Advanced',color:'#a14b5d',estimatedHours:48},
+  {id:'python',name:'Python Programming',code:'CS-101',category:'Programming',description:'Python fundamentals, data structures, functions, OOP and exception handling.',topics:['Syntax & Types','Functions & Scope','Collections','OOP Principles','File I/O','Modules'],progress:75,enrolled:false,level:'Beginner',color:'#b17b24',estimatedHours:24},
 ];
 
 const initialNotes: Note[] = [
-  {id:'n1',title:'Deadlocks — Exam Notes',subject:'Operating Systems',source:'OS Unit 3.pdf',type:'Exam Notes',content:'Deadlock is a state where processes wait indefinitely for resources held by one another. Four necessary conditions: mutual exclusion, hold and wait, no preemption, circular wait.',createdAt:'Today'},
-  {id:'n2',title:'Transport Layer Quick Summary',subject:'Computer Networks',source:'CN Transport Layer.pdf',type:'Summary',content:'The transport layer provides end-to-end communication, reliability, flow control and multiplexing through protocols such as TCP and UDP.',createdAt:'Yesterday'},
+  {id:'n1',title:'Deadlocks & Coffman Conditions — Exam Notes',subject:'Operating Systems',source:'OS_Unit3_Deadlocks_and_Prevention.pdf',type:'Exam Notes',content:'Deadlock is a state where processes wait indefinitely for resources held by one another. Four necessary Coffman conditions: (1) Mutual exclusion, (2) Hold and wait, (3) No preemption, (4) Circular wait. Breaking any one condition prevents deadlock.',createdAt:'Today'},
+  {id:'n2',title:'Transport Layer: TCP vs UDP Quick Summary',subject:'Computer Networks',source:'CN_Transport_Layer_TCP_UDP.docx',type:'Summary',content:'The transport layer provides logical end-to-end communication. TCP is connection-oriented and provides reliable ordered delivery with congestion and flow control. UDP is connectionless, lightweight, and low-latency.',createdAt:'Yesterday'},
+  {id:'n3',title:'Relational Normalization & BCNF Guidelines',subject:'Database Management Systems',source:'DBMS_Relational_Algebra_and_SQL.pptx',type:'Exam Notes',content:'Normalization minimizes redundancy and eliminates update anomalies. 1NF: Atomic values. 2NF: No partial dependency on candidate keys. 3NF: No transitive dependency. BCNF: For every functional dependency X -> Y, X must be a super key.',createdAt:'2 days ago'},
 ];
 
 const initialEvents: CalendarEvent[] = [
-  {id:'e1',date:'2026-09-22',title:'Complete OS Deadlock Notes',type:'Task',subject:'Operating Systems',completed:false},
-  {id:'e2',date:'2026-09-24',title:'Computer Networks Quiz',type:'Assignment',subject:'Computer Networks',time:'6:00 PM',completed:false},
-  {id:'e3',date:'2026-09-28',title:'Computer Networks Exam',type:'Exam',subject:'Computer Networks',time:'10:00 AM'},
-  {id:'e4',date:'2026-09-30',title:'OS Revision Session',type:'Study Session',subject:'Operating Systems',time:'5:00 PM'},
+  {id:'e1',date:'2026-09-24',title:'Complete OS Deadlock Notes',type:'Task',subject:'Operating Systems',completed:false},
+  {id:'e2',date:'2026-09-26',title:'Computer Networks Practice Quiz',type:'Assignment',subject:'Computer Networks',time:'6:00 PM',completed:false},
+  {id:'e3',date:'2026-09-27',title:'Operating Systems Midterm Exam',type:'Exam',subject:'Operating Systems',time:'10:00 AM'},
+  {id:'e4',date:'2026-10-04',title:'Computer Networks Mid-Term Assessment',type:'Exam',subject:'Computer Networks',time:'02:00 PM'},
+  {id:'e5',date:'2026-10-02',title:'DBMS Revision Session (Indexing)',type:'Study Session',subject:'Database Management Systems',time:'5:00 PM'},
 ];
 
-function readStorage<T>(key: string, fallback: T): T { try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; } catch { return fallback; } }
-function writeStorage(key: string, value: unknown) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage is optional */ } }
+function readStorage<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw);
+    // Sanitize any previous session data containing legacy fictional academic items
+    if (key === 'acadassist.user' && (parsed?.name === 'Rowan' || parsed?.email?.includes('solaris'))) {
+      return fallback;
+    }
+    if (key === 'acadassist.subjects' && Array.isArray(parsed) && parsed.some((s: { name?: string }) => s?.name?.includes('Quantum'))) {
+      return fallback;
+    }
+    if (key === 'acadassist.materials' && Array.isArray(parsed) && parsed.some((m: { name?: string }) => m?.name?.includes('Quantum_Manifold'))) {
+      return fallback;
+    }
+    return parsed;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorage(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* storage is optional */
+  }
+}
 
 interface AppState {
   user: UserProfile;
@@ -61,6 +92,8 @@ interface AppState {
   notifications:Notification[];
   toasts:Toast[];
   subjects:Subject[];
+  weakTopics:WeakTopic[];
+  studyRecommendation:StudyRecommendation|null;
 }
 
 interface AppContextType extends AppState {
@@ -92,6 +125,7 @@ interface AppContextType extends AppState {
   markNotificationRead:(id:string)=>void;
   pushToast:(message:string,type?:Toast['type'])=>void;
   dismissToast:(id:string)=>void;
+  reloadWeakTopics:()=>Promise<void>;
 }
 
 const AppContext=createContext<AppContextType|null>(null);
@@ -118,14 +152,32 @@ export function AppProvider({children}:{children:ReactNode}) {
   const [quizzes,setQuizzes]=useState<Quiz[]>(()=>readStorage('acadassist.quizzes',[]));
   const [events,setEvents]=useState<CalendarEvent[]>(()=>readStorage('acadassist.events',initialEvents));
   const [notifications,setNotifications]=useState<Notification[]>(()=>readStorage('acadassist.notifications',[
-    {id:'nt1',title:'AI notes are ready',message:'Your OS exam notes are available in Knowledge.',type:'success',read:false,createdAt:'Today',link:'/knowledge'},
-    {id:'nt2',title:'Exam approaching',message:'Computer Networks exam is coming up. Review your weak topics.',type:'warning',read:false,createdAt:'Today',link:'/planner'},
-    {id:'nt3',title:'Study plan updated',message:'Two tasks are scheduled for your next study session.',type:'info',read:true,createdAt:'Yesterday',link:'/planner'},
+    {id:'nt1',title:'AI notes ready',message:'Operating Systems Deadlocks notes available in Knowledge.',type:'success',read:false,createdAt:'Today',link:'/knowledge'},
+    {id:'nt2',title:'Upcoming Exam: OS Midterm',message:'Operating Systems Midterm is in 5 days. Practice your weak topic: Deadlocks.',type:'warning',read:false,createdAt:'Today',link:'/planner'},
+    {id:'nt3',title:'Diagnostic suggestion',message:'Computer Networks Transport Layer quiz recommended based on recent score (50%).',type:'info',read:false,createdAt:'Yesterday',link:'/assessment'},
   ]));
   const [toasts,setToasts]=useState<Toast[]>([]);
   const [subjects,setSubjects]=useState<Subject[]>(()=>readStorage('acadassist.subjects',structuredClone(SUBJECTS)));
   const [sidebarOpen,setSidebarOpen]=useState(false);
   const [settings,setSettings]=useState<AppState['settings']>(()=>({...defaultSettings,...readStorage('acadassist.settings',defaultSettings)}));
+  
+  // Weak topics and study recommendations behind service layer interface
+  const [weakTopics,setWeakTopics]=useState<WeakTopic[]>([]);
+  const [studyRecommendation,setStudyRecommendation]=useState<StudyRecommendation|null>(null);
+
+  const reloadWeakTopics=useCallback(async()=>{
+    try {
+      const [topics, rec] = await Promise.all([fetchWeakTopics(), fetchStudyRecommendation()]);
+      setWeakTopics(topics);
+      setStudyRecommendation(rec);
+    } catch {
+      // Fallback kept safe and clean
+    }
+  },[]);
+
+  useEffect(()=>{
+    reloadWeakTopics();
+  },[reloadWeakTopics]);
 
   useEffect(()=>{ writeStorage('acadassist.user',user); },[user]);
   useEffect(()=>{ writeStorage('acadassist.todayPlan',todayPlan); },[todayPlan]);
@@ -201,7 +253,24 @@ export function AppProvider({children}:{children:ReactNode}) {
     window.setTimeout(()=>setToasts(p=>p.filter(t=>t.id!==id)),3500);
   },[]);
 
-  const value=useMemo(()=>({user,todayPlan,plannerTasks,knowledgeMaterials,chatHistory,settings,sidebarOpen,studyGoals,courses,notes,quizzes,events,notifications,toasts,subjects,updateUser,togglePlanItem,togglePlannerTask,toggleGoal,addChatMessage,clearChatHistory,addKnowledgeMaterial,updateKnowledgeMaterial,deleteKnowledgeMaterial,updateSetting,setSidebarOpen,addCourse,removeCourse,addNote,updateNote,deleteNote,addQuiz,updateQuiz,addEvent,updateEvent,deleteEvent,addSubject,updateSubject,deleteSubject,markNotificationsRead,markNotificationRead,pushToast,dismissToast}),[user,todayPlan,plannerTasks,knowledgeMaterials,chatHistory,settings,sidebarOpen,studyGoals,courses,notes,quizzes,events,notifications,toasts,subjects,updateUser,togglePlanItem,togglePlannerTask,toggleGoal,addChatMessage,clearChatHistory,addKnowledgeMaterial,updateKnowledgeMaterial,deleteKnowledgeMaterial,updateSetting,addCourse,removeCourse,addNote,updateNote,deleteNote,addQuiz,updateQuiz,addEvent,updateEvent,deleteEvent,addSubject,updateSubject,deleteSubject,markNotificationsRead,markNotificationRead,pushToast,dismissToast]);
+  const value=useMemo(()=>({
+    user,todayPlan,plannerTasks,knowledgeMaterials,chatHistory,settings,sidebarOpen,studyGoals,
+    courses,notes,quizzes,events,notifications,toasts,subjects,weakTopics,studyRecommendation,
+    updateUser,togglePlanItem,togglePlannerTask,toggleGoal,addChatMessage,clearChatHistory,
+    addKnowledgeMaterial,updateKnowledgeMaterial,deleteKnowledgeMaterial,updateSetting,setSidebarOpen,
+    addCourse,removeCourse,addNote,updateNote,deleteNote,addQuiz,updateQuiz,addEvent,updateEvent,
+    deleteEvent,addSubject,updateSubject,deleteSubject,markNotificationsRead,markNotificationRead,
+    pushToast,dismissToast,reloadWeakTopics
+  }),[
+    user,todayPlan,plannerTasks,knowledgeMaterials,chatHistory,settings,sidebarOpen,studyGoals,
+    courses,notes,quizzes,events,notifications,toasts,subjects,weakTopics,studyRecommendation,
+    updateUser,togglePlanItem,togglePlannerTask,toggleGoal,addChatMessage,clearChatHistory,
+    addKnowledgeMaterial,updateKnowledgeMaterial,deleteKnowledgeMaterial,updateSetting,addCourse,
+    removeCourse,addNote,updateNote,deleteNote,addQuiz,updateQuiz,addEvent,updateEvent,deleteEvent,
+    addSubject,updateSubject,deleteSubject,markNotificationsRead,markNotificationRead,pushToast,
+    dismissToast,reloadWeakTopics
+  ]);
+
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 }
 
