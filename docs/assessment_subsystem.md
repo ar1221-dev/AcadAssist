@@ -107,7 +107,7 @@ The Assessment subsystem lives in the **shared application database** (SQLAlchem
 
 ## 4. Business Rules & Configurable Thresholds
 
-All business logic rules are centralized in [`app/core/config.py`](file:///c:/Users/asus/OneDrive/Desktop/AcadAssist1/app/core/config.py):
+All business logic rules are centralized in [`app/core/config.py`](file:///app/core/config.py):
 
 | Rule / Concept | Default Threshold | Description |
 | :--- | :--- | :--- |
