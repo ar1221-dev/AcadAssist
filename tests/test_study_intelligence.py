@@ -432,21 +432,22 @@ def test_task_management_and_isolation(db_session: Session):
 # ==============================================================================
 # TEST 6 — Full API Integration via TestClient
 # ==============================================================================
-def test_api_integration_endpoints(client: TestClient, db_session: Session):
+def test_api_integration_endpoints(client: TestClient, db_session: Session, auth_headers):
     """Test 6: Verify all Person 4 REST endpoints via FastAPI TestClient."""
     user_id = "student_api_client"
     seeded = _seed_os_academic_data(db_session, user_id=user_id, exam_days_away=3)
     today = seeded["today"]
+    headers = auth_headers(user_id)
 
     # 1. GET /api/progress
-    resp = client.get(f"/api/progress?user_id={user_id}&course_id=CS301")
+    resp = client.get(f"/api/progress?user_id={user_id}&course_id=CS301", headers=headers)
     assert resp.status_code == 200
     data = resp.json()
     assert "course_completion" in data
     assert data["topic_mastery"]["TOP_PAGING"] == 48.0
 
     # 2. GET /api/progress/recommendations
-    resp = client.get(f"/api/progress/recommendations?user_id={user_id}")
+    resp = client.get(f"/api/progress/recommendations?user_id={user_id}", headers=headers)
     assert resp.status_code == 200
     rec_data = resp.json()
     assert "recommendations" in rec_data
@@ -459,7 +460,7 @@ def test_api_integration_endpoints(client: TestClient, db_session: Session):
         "end_date": (today + timedelta(days=3)).isoformat(),
         "available_minutes_per_day": 120,
     }
-    resp = client.post("/api/plans", json=plan_payload)
+    resp = client.post("/api/plans", json=plan_payload, headers=headers)
     assert resp.status_code == 201
     plan_resp = resp.json()
     plan_id = plan_resp["study_plan_id"]
@@ -467,25 +468,26 @@ def test_api_integration_endpoints(client: TestClient, db_session: Session):
     assert len(plan_resp["tasks"]) > 0
 
     # 4. GET /api/plans
-    resp = client.get(f"/api/plans?user_id={user_id}")
+    resp = client.get(f"/api/plans?user_id={user_id}", headers=headers)
     assert resp.status_code == 200
     plans_list = resp.json()
     assert len(plans_list) >= 1
 
     # 5. GET /api/plans/today
-    resp = client.get(f"/api/plans/today?user_id={user_id}")
+    resp = client.get(f"/api/plans/today?user_id={user_id}", headers=headers)
     assert resp.status_code == 200
     today_data = resp.json()
     assert today_data["user_id"] == user_id
     assert today_data["total_tasks"] >= 1
 
     # 6. GET /api/plans/{plan_id} (and user isolation)
-    resp = client.get(f"/api/plans/{plan_id}?user_id={user_id}")
+    resp = client.get(f"/api/plans/{plan_id}?user_id={user_id}", headers=headers)
     assert resp.status_code == 200
     assert resp.json()["study_plan_id"] == plan_id
 
     # Verify user isolation: another user cannot access this plan
-    resp_unauthorized = client.get(f"/api/plans/{plan_id}?user_id=intruder_user")
+    intruder_headers = auth_headers("intruder_user")
+    resp_unauthorized = client.get(f"/api/plans/{plan_id}?user_id=intruder_user", headers=intruder_headers)
     assert resp_unauthorized.status_code == 404
 
     # 7. PATCH /api/tasks/{task_id} (and user isolation)
@@ -494,11 +496,11 @@ def test_api_integration_endpoints(client: TestClient, db_session: Session):
     patch_payload = {"status": "completed"}
 
     # Another user cannot modify this task
-    resp_unauth_patch = client.patch(f"/api/tasks/{task_id}?user_id=intruder_user", json=patch_payload)
-    assert resp_unauth_patch.status_code == 404
+    resp_unauth_patch = client.patch(f"/api/tasks/{task_id}?user_id=intruder_user", json=patch_payload, headers=intruder_headers)
+    assert resp_unauth_patch.status_code in [403, 404]
 
     # Authorized user updates task
-    resp = client.patch(f"/api/tasks/{task_id}?user_id={user_id}", json=patch_payload)
+    resp = client.patch(f"/api/tasks/{task_id}?user_id={user_id}", json=patch_payload, headers=headers)
     assert resp.status_code == 200
     assert resp.json()["status"] == "completed"
 
@@ -508,7 +510,7 @@ def test_api_integration_endpoints(client: TestClient, db_session: Session):
         "week_start": today.isoformat(),
         "week_end": (today + timedelta(days=6)).isoformat(),
     }
-    resp = client.post("/api/reports/weekly", json=report_payload)
+    resp = client.post("/api/reports/weekly", json=report_payload, headers=headers)
     assert resp.status_code == 201
     rep_data = resp.json()
     assert rep_data["study_time_minutes"] >= 0
@@ -516,8 +518,9 @@ def test_api_integration_endpoints(client: TestClient, db_session: Session):
     assert "quiz_accuracy" in rep_data
 
     # 9. GET /api/reports/weekly
-    resp = client.get(f"/api/reports/weekly?user_id={user_id}")
+    resp = client.get(f"/api/reports/weekly?user_id={user_id}", headers=headers)
     assert resp.status_code == 200
     saved_reps = resp.json()
     assert len(saved_reps) >= 1
     assert saved_reps[0]["report_id"] == rep_data["report_id"]
+

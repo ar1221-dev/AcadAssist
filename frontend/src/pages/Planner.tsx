@@ -6,7 +6,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import HeroHeader from '../components/ui/HeroHeader';
 import Modal from '../components/ui/Modal';
-import { useApp, type CalendarEvent, UPCOMING_EXAMS } from '../context/AppContext';
+import { useApp, type CalendarEvent } from '../context/AppContext';
 
 const TYPES: CalendarEvent['type'][] = ['Task', 'Exam', 'Class', 'Assignment', 'Study Session', 'Personal Event'];
 const iso = (d: Date) =>
@@ -25,7 +25,7 @@ const monthDays = (year: number, month: number) => {
 export default function Planner() {
   const {
     plannerTasks, togglePlannerTask, events, addEvent, updateEvent, deleteEvent,
-    pushToast, settings, weakTopics
+    pushToast, settings, weakTopics, upcomingExams
   } = useApp();
   const navigate = useNavigate();
 
@@ -135,18 +135,49 @@ export default function Planner() {
     pushToast(`${minutes}-minute focus session started`);
   };
 
+  const nextExam = useMemo(() => {
+    const calendarExam = events
+      .filter(e => e.type === 'Exam' && e.date >= iso(new Date()))
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+    const backendExam = upcomingExams && upcomingExams.length > 0 ? upcomingExams[0] : null;
+
+    if (backendExam) {
+      const nowMs = new Date().getTime();
+      return {
+        examName: backendExam.title,
+        subject: backendExam.subjectId || 'Academic Subject',
+        daysLeft: backendExam.daysUntilExam ?? Math.max(0, Math.ceil((new Date(backendExam.examDate).getTime() - nowMs) / (1000 * 60 * 60 * 24))),
+        dateStr: new Date(backendExam.examDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+      };
+    }
+    if (calendarExam) {
+      const nowMs = new Date().getTime();
+      return {
+        examName: calendarExam.title,
+        subject: calendarExam.subject || 'Academic Subject',
+        daysLeft: Math.max(0, Math.ceil((new Date(calendarExam.date + 'T00:00:00').getTime() - nowMs) / (1000 * 60 * 60 * 24))),
+        dateStr: new Date(calendarExam.date + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+      };
+    }
+    return null;
+  }, [events, upcomingExams]);
+
+  const primaryWeak = weakTopics[0];
+
   const schedulePipelineTask = () => {
-    const topWeak = weakTopics[0];
-    const topExam = UPCOMING_EXAMS[0];
-    const taskTitle = `Revise ${topWeak?.topic || 'Deadlocks'} (${topExam?.subject || 'Operating Systems'})`;
+    const targetSubject = nextExam?.subject || primaryWeak?.subject || 'Academic Study';
+    const taskTitle = primaryWeak ? `Revise ${primaryWeak.topic} (${targetSubject})` : `Study ${targetSubject}`;
     addEvent({
       id: crypto.randomUUID(),
       date: iso(new Date()),
       title: taskTitle,
       time: '4:00 PM',
       type: 'Study Session',
-      subject: topExam?.subject || 'Operating Systems',
-      notes: `Targeted revision ahead of ${topExam?.examName || 'Exam'}. Diagnostic score: ${topWeak?.accuracyScore || 58}%.`,
+      subject: targetSubject,
+      notes: primaryWeak
+        ? `Targeted revision for ${primaryWeak.topic}. Diagnostic accuracy: ${primaryWeak.accuracyScore}%.`
+        : `Scheduled focus study session for ${targetSubject}.`,
       completed: false,
     });
     pushToast('Recommended revision session added to schedule');
@@ -155,9 +186,6 @@ export default function Planner() {
   const formatted = focusSeconds
     ? `${String(Math.floor(focusSeconds / 60)).padStart(2, '0')}:${String(focusSeconds % 60).padStart(2, '0')}`
     : '00:00';
-
-  const nextExam = UPCOMING_EXAMS[0];
-  const primaryWeak = weakTopics[0];
 
   return (
     <div className="page-stack">
@@ -176,63 +204,81 @@ export default function Planner() {
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className="section-kicker text-[var(--color-green-accent)]">REVISION PIPELINE</span>
-            <span className="soft-badge text-[.6rem]">Exam Driven</span>
+            <span className="soft-badge text-[.6rem]">Curriculum Driven</span>
           </div>
-          <span className="text-[.65rem] text-[var(--color-text-muted)] font-medium">Demo Intelligence Service</span>
+          <span className="text-[.65rem] text-[var(--color-text-muted)] font-medium">Revision Intelligence</span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 my-2">
-          {/* Step 1: Exam */}
-          <div className="p-3 rounded-xl bg-[var(--color-page-bg)] border border-[var(--color-card-border)]">
-            <small className="text-[.62rem] text-orange-600 dark:text-orange-400 font-bold uppercase block">1. Target Exam</small>
-            <b className="text-xs text-[var(--color-text-dark)] block mt-0.5">
-              {nextExam?.examName || 'Operating Systems Midterm'}
-            </b>
-            <span className="text-[.65rem] text-[var(--color-text-muted)] block mt-0.5">
-              {nextExam?.subject || 'Operating Systems'} · in {nextExam?.daysLeft || 5} days ({nextExam?.dateStr || '27 Sep'})
-            </span>
-          </div>
+        {nextExam || primaryWeak ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 my-2">
+              {/* Step 1: Exam */}
+              <div className="p-3 rounded-xl bg-[var(--color-page-bg)] border border-[var(--color-card-border)]">
+                <small className="text-[.62rem] text-orange-600 dark:text-orange-400 font-bold uppercase block">1. Target Exam</small>
+                <b className="text-xs text-[var(--color-text-dark)] block mt-0.5">
+                  {nextExam?.examName || 'No upcoming exam scheduled'}
+                </b>
+                <span className="text-[.65rem] text-[var(--color-text-muted)] block mt-0.5">
+                  {nextExam ? `${nextExam.subject} · in ${nextExam.daysLeft} days (${nextExam.dateStr})` : 'Add an exam below to set target dates'}
+                </span>
+              </div>
 
-          {/* Step 2: Weak Topic */}
-          <div className="p-3 rounded-xl bg-[var(--color-page-bg)] border border-[var(--color-card-border)]">
-            <small className="text-[.62rem] text-red-600 dark:text-red-400 font-bold uppercase block">2. Identified Weak Topic</small>
-            <b className="text-xs text-[var(--color-text-dark)] block mt-0.5">
-              {primaryWeak?.topic || 'Deadlocks & Coffman Conditions'}
-            </b>
-            <span className="text-[.65rem] text-red-600 dark:text-red-400 font-bold block mt-0.5">
-              Current accuracy: {primaryWeak?.accuracyScore || 58}% (Diagnostic sample)
-            </span>
-          </div>
+              {/* Step 2: Weak Topic */}
+              <div className="p-3 rounded-xl bg-[var(--color-page-bg)] border border-[var(--color-card-border)]">
+                <small className="text-[.62rem] text-red-600 dark:text-red-400 font-bold uppercase block">2. Identified Weak Topic</small>
+                <b className="text-xs text-[var(--color-text-dark)] block mt-0.5">
+                  {primaryWeak?.topic || 'No weak topics detected yet'}
+                </b>
+                <span className="text-[.65rem] text-red-600 dark:text-red-400 font-bold block mt-0.5">
+                  {primaryWeak ? `Diagnostic accuracy: ${primaryWeak.accuracyScore}%` : 'Complete quizzes to detect focus areas'}
+                </span>
+              </div>
 
-          {/* Step 3: Recommended Task */}
-          <div className="p-3 rounded-xl bg-[var(--color-page-bg)] border border-[var(--color-card-border)]">
-            <small className="text-[.62rem] text-green-700 dark:text-green-400 font-bold uppercase block">
-              3. Recommended Action
-            </small>
-            <b className="text-xs text-[var(--color-text-dark)] block mt-0.5">
-              45 min Deadlock Prevention Review
-            </b>
-            <span className="text-[.65rem] text-[var(--color-text-muted)] block mt-0.5">
-              Solve Coffman problem set + practice quiz
-            </span>
-          </div>
-        </div>
+              {/* Step 3: Recommended Task */}
+              <div className="p-3 rounded-xl bg-[var(--color-page-bg)] border border-[var(--color-card-border)]">
+                <small className="text-[.62rem] text-green-700 dark:text-green-400 font-bold uppercase block">
+                  3. Recommended Action
+                </small>
+                <b className="text-xs text-[var(--color-text-dark)] block mt-0.5">
+                  {primaryWeak ? `45 min ${primaryWeak.topic} Review` : '45 min Scheduled Study Block'}
+                </b>
+                <span className="text-[.65rem] text-[var(--color-text-muted)] block mt-0.5">
+                  {primaryWeak ? primaryWeak.recommendedAction : 'Solve practice questions and revise course notes'}
+                </span>
+              </div>
+            </div>
 
-        <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-[var(--color-border-light)]">
-          <button
-            className="btn secondary text-xs"
-            onClick={() =>
-              navigate(
-                `/assessment?topic=${encodeURIComponent(primaryWeak?.topic.split(' ')[0] || 'Deadlocks')}`
-              )
-            }
-          >
-            <Target size={14} /> Practice questions
-          </button>
-          <button className="btn primary text-xs" onClick={schedulePipelineTask}>
-            <Plus size={14} /> Schedule recommended study session
-          </button>
-        </div>
+            <div className="flex justify-end gap-2 mt-3 pt-2 border-t border-[var(--color-border-light)]">
+              {primaryWeak && (
+                <button
+                  className="btn secondary text-xs"
+                  onClick={() =>
+                    navigate(
+                      `/assessment?topic=${encodeURIComponent(primaryWeak.topic.split(' ')[0])}`
+                    )
+                  }
+                >
+                  <Target size={14} /> Practice questions
+                </button>
+              )}
+              <button className="btn primary text-xs" onClick={schedulePipelineTask}>
+                <Plus size={14} /> Schedule recommended study session
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="p-4 text-center text-xs text-[var(--color-text-muted)] flex flex-col items-center gap-2">
+            <span>Schedule an exam or take an assessment quiz to automatically generate target revision tasks tailored to your weak areas.</span>
+            <div className="flex gap-2 mt-1">
+              <button className="btn secondary text-xs" onClick={() => openAdd()}>
+                <Plus size={13} /> Add exam to calendar
+              </button>
+              <button className="btn primary text-xs" onClick={() => navigate('/assessment')}>
+                <Target size={13} /> Take practice quiz
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Planner Toolbar */}
@@ -459,7 +505,9 @@ export default function Planner() {
             <div className="section-kicker">AI STUDY STRATEGY</div>
             <h3 className="mt-1">Prioritize what is closest to an exam.</h3>
             <p className="muted text-xs mt-2 leading-relaxed">
-              Operating Systems Midterm is in 5 days. Schedule 45-minute daily blocks specifically targeting Deadlocks and Memory Management.
+              {upcomingExams && upcomingExams.length > 0
+                ? `${upcomingExams[0].title || upcomingExams[0].subjectId || 'Upcoming exam'} is in ${upcomingExams[0].daysUntilExam ?? 'a few'} days. Schedule 45-minute daily blocks to review key concepts.`
+                : 'Review your course materials and practice key topics with 45-minute daily study blocks.'}
             </p>
             <button
               className="btn secondary w-full mt-3 text-xs"

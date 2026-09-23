@@ -47,6 +47,8 @@ def get_processing_service(
     )
 
 
+from app.core.auth import get_current_user, get_current_user_id
+
 __all__ = [
     "get_db",
     "get_storage",
@@ -55,4 +57,7 @@ __all__ = [
     "set_search_service",
     "get_embedding",
     "get_processing_service",
+    "get_current_user",
+    "get_current_user_id",
 ]
+

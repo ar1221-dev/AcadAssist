@@ -5,7 +5,7 @@ import pytest
 from app.config import settings
 
 
-def test_upload_valid_file(client, sample_academic_entities):
+def test_upload_valid_file(client, sample_academic_entities, auth_headers):
     entities = sample_academic_entities
     fake_txt = io.BytesIO(b"Valid lecture notes content for operating systems.")
 
@@ -18,6 +18,7 @@ def test_upload_valid_file(client, sample_academic_entities):
             "title": "OS Lecture 1",
         },
         files={"file": ("lecture1.txt", fake_txt, "text/plain")},
+        headers=auth_headers(entities["user_a"].user_id),
     )
 
     assert response.status_code == 201
@@ -27,7 +28,7 @@ def test_upload_valid_file(client, sample_academic_entities):
     assert data["file_type"] == "txt"
 
 
-def test_upload_unsupported_extension(client, sample_academic_entities):
+def test_upload_unsupported_extension(client, sample_academic_entities, auth_headers):
     entities = sample_academic_entities
     fake_exe = io.BytesIO(b"malicious binary payload")
 
@@ -39,13 +40,14 @@ def test_upload_unsupported_extension(client, sample_academic_entities):
             "subject_id": entities["subject_os"].subject_id,
         },
         files={"file": ("malware.exe", fake_exe, "application/octet-stream")},
+        headers=auth_headers(entities["user_a"].user_id),
     )
 
     assert response.status_code == 400
     assert "Unsupported file extension" in response.json()["detail"]
 
 
-def test_upload_empty_file(client, sample_academic_entities):
+def test_upload_empty_file(client, sample_academic_entities, auth_headers):
     entities = sample_academic_entities
     empty_file = io.BytesIO(b"")
 
@@ -57,7 +59,9 @@ def test_upload_empty_file(client, sample_academic_entities):
             "subject_id": entities["subject_os"].subject_id,
         },
         files={"file": ("empty.pdf", empty_file, "application/pdf")},
+        headers=auth_headers(entities["user_a"].user_id),
     )
 
     assert response.status_code == 400
     assert "empty" in response.json()["detail"].lower()
+

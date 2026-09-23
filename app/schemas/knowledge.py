@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 class KnowledgeSearchRequest(BaseModel):
     """Payload for POST /api/knowledge/search."""
 
-    user_id: str = Field(..., description="ID of the requesting user (mandatory)")
+    user_id: str | None = Field(default=None, description="Optional requesting user ID (authenticated identity takes precedence)")
     query: str = Field(..., min_length=1, description="Natural language search query")
     course_id: str | None = Field(default=None, description="Optional Course filter")
     subject_id: str | None = Field(default=None, description="Optional Subject filter")

@@ -20,6 +20,9 @@ from app.assessment.exceptions import (
     InsufficientQuestionsError,
 )
 
+from sqlalchemy import select
+from app.assessment.models import QuizAttempt
+
 router = APIRouter(prefix="/quizzes", tags=["Quizzes"])
 
 
@@ -46,6 +49,35 @@ def create_quiz(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e),
         )
+
+
+@router.get("/attempts")
+def get_user_quiz_attempts(
+    db: Session = Depends(get_db),
+    user_id: str = Depends(get_current_user_id),
+):
+    """Retrieve quiz attempt history for the authenticated user."""
+    stmt = (
+        select(QuizAttempt)
+        .where(QuizAttempt.user_id == user_id)
+        .order_by(QuizAttempt.completed_at.desc())
+    )
+    attempts = db.execute(stmt).scalars().all()
+    results = []
+    for att in attempts:
+        quiz_title = att.quiz.title if att.quiz else (att.topic_id or "Practice Quiz")
+        quiz_subject = att.quiz.subject_id if att.quiz else "Academic Subject"
+        results.append({
+            "attempt_id": att.attempt_id,
+            "quiz_id": att.quiz_id,
+            "title": quiz_title,
+            "subject": quiz_subject,
+            "score": att.score or 0,
+            "total": att.total_questions or 0,
+            "percentage": att.score_percentage or 0.0,
+            "completed_at": att.completed_at.isoformat() if att.completed_at else None,
+        })
+    return results
 
 
 @router.get("/{quiz_id}", response_model=QuizResponse)

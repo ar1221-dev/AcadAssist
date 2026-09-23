@@ -9,12 +9,12 @@ export default function Signup(){
  const [name,setName]=useState(''); const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [confirm,setConfirm]=useState('');
  const [show,setShow]=useState(false); const [error,setError]=useState('');
  const checks=[['8+ characters',password.length>=8],['One uppercase letter',/[A-Z]/.test(password)],['One number',/\d/.test(password)]];
- const submit=(e:FormEvent)=>{e.preventDefault();setError('');
+ const submit=async (e:FormEvent)=>{e.preventDefault();setError('');
    if(name.trim().length<2){setError('Enter your full name.');return;}
    if(!validEmail(email)){setError('Enter a valid email address.');return;}
    if(!checks.every(([,ok])=>ok)){setError('Choose a password that meets all requirements.');return;}
    if(password!==confirm){setError('Passwords do not match.');return;}
-   try { signUp(name,email,password); navigate(`/login?created=1&email=${encodeURIComponent(email.trim().toLowerCase())}`); }
+   try { await signUp(name,email,password); navigate(`/login?created=1&email=${encodeURIComponent(email.trim().toLowerCase())}`); }
    catch(err){setError(err instanceof Error?err.message:'Unable to create account.');}
  };
  return <div className="auth-page"><div className="auth-side signup-side"><Link to="/" className="landing-brand"><span>A</span><strong>AcadAssist</strong></Link><div><div className="eyebrow">BUILD YOUR WORKSPACE</div><h1>Your courses, notes and practice — connected.</h1><p>Create a local account and start with a focused academic workspace.</p><div className="signup-benefits"><span><Check size={14}/>Courses & knowledge in one place</span><span><Check size={14}/>Practice with generated assessments</span><span><Check size={14}/>Progress saved on this device</span></div></div></div>

@@ -25,7 +25,22 @@ class User(Base):
     user_id = Column(String(64), primary_key=True, default=generate_uuid)
     name = Column(String(128), nullable=False)
     email = Column(String(128), nullable=False, unique=True, index=True)
+    password_hash = Column(String(255), nullable=True)
+    role = Column(String(64), nullable=False, default="student")
+    academic_level = Column(String(64), nullable=True, default="Undergraduate")
+    field_of_study = Column(String(128), nullable=True, default="Computer Science")
+    bio = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    @property
+    def id(self) -> str:
+        return self.user_id
 
 
 class Course(Base):

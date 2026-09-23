@@ -22,23 +22,41 @@ class AzureStorageService(StorageService):
         self.connection_string = connection_string or settings.AZURE_STORAGE_CONNECTION_STRING
         self.container_name = container_name or settings.AZURE_STORAGE_CONTAINER
         self.fallback_storage: LocalStorageService | None = None
+        self.azure_client = None
 
-        if not self.connection_string:
+        has_azure_storage = bool(self.connection_string or settings.AZURE_STORAGE_ACCOUNT)
+
+        if not has_azure_storage:
             if settings.is_production():
-                raise ValueError("AZURE_STORAGE_CONNECTION_STRING is mandatory in production environment.")
-            logger.info("Azure Storage connection string not provided. Using local file storage for development/testing.")
+                raise ValueError("Azure Storage configuration (AZURE_STORAGE_ACCOUNT or AZURE_STORAGE_CONNECTION_STRING) is mandatory in production environment.")
+            logger.info("Azure Storage not configured. Using local file storage for development/testing.")
             self.fallback_storage = LocalStorageService()
             self.blob_service_client = None
             self.container_client = None
         else:
-            from azure.storage.blob import BlobServiceClient
-            self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
-            self.container_client = self.blob_service_client.get_container_client(self.container_name)
             try:
+                from app.azure.storage import AzureStorageClient
+                self.azure_client = AzureStorageClient(
+                    storage_account=settings.AZURE_STORAGE_ACCOUNT,
+                    container_name=self.container_name,
+                )
+                if self.connection_string:
+                    from azure.storage.blob import BlobServiceClient
+                    self.blob_service_client = BlobServiceClient.from_connection_string(self.connection_string)
+                    self.container_client = self.blob_service_client.get_container_client(self.container_name)
+                else:
+                    self.container_client = self.azure_client.get_container_client()
+                    self.blob_service_client = self.azure_client.get_service_client()
+
                 if not self.container_client.exists():
                     self.container_client.create_container()
             except Exception as e:
-                logger.warning(f"Could not verify or create Azure Blob container '{self.container_name}': {e}")
+                if settings.is_production():
+                    raise ValueError(f"Failed to connect to Azure Blob container '{self.container_name}': {e}")
+                logger.warning(f"Could not connect to Azure Blob container '{self.container_name}', using local fallback: {e}")
+                self.fallback_storage = LocalStorageService()
+                self.blob_service_client = None
+                self.container_client = None
 
     def save_file(self, file_bytes: bytes, filename: str, user_id: str) -> str:
         """Save file bytes to Azure Blob container (or local fallback)."""

@@ -5,7 +5,8 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, get_current_user
+from app.models.shared import User
 from app.models.study_plan import StudyPlan, StudyTask
 from app.schemas.study import (
     StudyPlanCreateRequest,
@@ -23,12 +24,21 @@ tasks_router = APIRouter(prefix="/tasks", tags=["Study Tasks"])
 @router.post("", response_model=StudyPlanResponse, status_code=status.HTTP_201_CREATED)
 def create_plan(
     payload: StudyPlanCreateRequest,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Generate and store a new exam-aware study plan."""
+    """Generate and store a new exam-aware study plan for authenticated user."""
+    # Ensure client-supplied user_id cannot impersonate another user
+    target_user_id = current_user.user_id
+    if payload.user_id and payload.user_id != target_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot create a study plan for another user",
+        )
+
     try:
         plan = create_study_plan(
-            user_id=payload.user_id,
+            user_id=target_user_id,
             start_date=payload.start_date,
             end_date=payload.end_date,
             available_minutes_per_day=payload.available_minutes_per_day,
@@ -46,13 +56,19 @@ def create_plan(
 
 @router.get("", response_model=List[StudyPlanResponse])
 def list_plans(
-    user_id: str = Query(..., description="User ID"),
+    user_id: Optional[str] = Query(None, description="Optional legacy user ID filter"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List all study plans for the user."""
+    """List all study plans for the authenticated user."""
+    if user_id and user_id != current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access to study plans of another user is forbidden",
+        )
     plans = (
         db.query(StudyPlan)
-        .filter(StudyPlan.user_id == user_id)
+        .filter(StudyPlan.user_id == current_user.user_id)
         .order_by(StudyPlan.created_at.desc())
         .all()
     )
@@ -61,13 +77,19 @@ def list_plans(
 
 @router.get("/today", response_model=TodayPlanResponse)
 def get_today_study_plan(
-    user_id: str = Query(..., description="User ID"),
+    user_id: Optional[str] = Query(None, description="Optional legacy user ID"),
     target_date: Optional[date] = Query(None, description="Optional target date (defaults to today)"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieve today's scheduled study tasks."""
+    """Retrieve today's scheduled study tasks for the authenticated user."""
+    if user_id and user_id != current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access to another user's daily plan is forbidden",
+        )
     try:
-        plan_data = get_today_plan(user_id=user_id, target_date=target_date, db=db)
+        plan_data = get_today_plan(user_id=current_user.user_id, target_date=target_date, db=db)
         return TodayPlanResponse(**plan_data)
     except Exception as e:
         raise HTTPException(
@@ -79,20 +101,26 @@ def get_today_study_plan(
 @router.get("/{plan_id}", response_model=StudyPlanResponse)
 def get_plan_by_id(
     plan_id: str,
-    user_id: str = Query(..., description="User ID required for user isolation"),
+    user_id: Optional[str] = Query(None, description="Optional legacy user ID"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieve a specific study plan and its tasks scoped to user_id."""
+    """Retrieve a specific study plan and its tasks scoped to authenticated user."""
+    if user_id and user_id != current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access to another user's study plan is forbidden",
+        )
     plan = (
         db.query(StudyPlan)
-        .filter(StudyPlan.study_plan_id == plan_id, StudyPlan.user_id == user_id)
+        .filter(StudyPlan.study_plan_id == plan_id, StudyPlan.user_id == current_user.user_id)
         .first()
     )
 
     if not plan:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Study plan '{plan_id}' not found or access unauthorized for user '{user_id}'",
+            detail=f"Study plan '{plan_id}' not found or access unauthorized",
         )
     return plan
 
@@ -101,15 +129,21 @@ def get_plan_by_id(
 def patch_task(
     task_id: str,
     payload: TaskUpdateRequest,
-    user_id: str = Query(..., description="User ID required for authorization check"),
+    user_id: Optional[str] = Query(None, description="Optional legacy user ID"),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Update study task completion status or reschedule time scoped to user_id."""
+    """Update study task completion status or reschedule time scoped to authenticated user."""
+    if user_id and user_id != current_user.user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access to another user's task is forbidden",
+        )
     try:
         task = update_task_status(
             task_id=task_id,
             status=payload.status,
-            user_id=user_id,
+            user_id=current_user.user_id,
             rescheduled_date=payload.rescheduled_date,
             rescheduled_time=payload.rescheduled_time,
             db=db,
@@ -122,3 +156,4 @@ def patch_task(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update task: {str(e)}",
         )
+

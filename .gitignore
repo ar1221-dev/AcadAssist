@@ -73,6 +73,9 @@ data/sample/*
 data/uploads/
 data/processed/
 data/vector_store/
+storage/
+data/storage/
+data/*.db
 output/
 outputs/
 temp/

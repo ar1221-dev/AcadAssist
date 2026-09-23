@@ -28,9 +28,27 @@ class Document(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     storage_path = Column(String(512), nullable=False)
-    status = Column(String(32), nullable=False, default="uploaded")  # uploaded, processing, processed, failed
+    visibility = Column(String(32), nullable=False, default="private")  # private, public
+    checksum = Column(String(64), nullable=True, index=True)
+    size_bytes = Column(Integer, nullable=False, default=0)
+    status = Column(String(32), nullable=False, default="uploaded")  # uploaded, queued, processing, processed, failed
+    processing_error = Column(Text, nullable=True)
     uploaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     processed_at = Column(DateTime, nullable=True)
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    @property
+    def id(self) -> str:
+        return self.document_id
+
+    @property
+    def owner_user_id(self) -> str:
+        return self.user_id
 
 
 class Chunk(Base):
@@ -44,6 +62,7 @@ class Chunk(Base):
     user_id = Column(String(64), nullable=False, index=True)
     course_id = Column(String(64), nullable=False, index=True)
     subject_id = Column(String(64), nullable=False, index=True)
+    visibility = Column(String(32), nullable=False, default="private")
     content = Column(Text, nullable=False)
     title = Column(String(255), nullable=True)
     section_title = Column(String(255), nullable=True)
@@ -56,3 +75,4 @@ class Chunk(Base):
     content_type = Column(String(64), nullable=False, default="text")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     content_vector = Column(Text, nullable=True)  # JSON-encoded 1536-dim vector for DB reference
+

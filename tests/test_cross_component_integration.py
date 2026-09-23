@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.models.shared import Course, Subject, Topic, TopicMastery, User
 
 
-def test_full_cross_component_workflow(client: TestClient, db_session: Session):
+def test_full_cross_component_workflow(client: TestClient, db_session: Session, auth_headers):
     """Execute complete realistic student journey across all integrated subsystems."""
     user_id = "student_cross_e2e"
 
@@ -38,6 +38,9 @@ def test_full_cross_component_workflow(client: TestClient, db_session: Session):
     db_session.add(subject)
     db_session.add_all(topics)
     db_session.commit()
+
+    headers = auth_headers(user_id)
+
 
     # =========================================================================
     # Step 1: Health Check verification (All subsystems)
@@ -70,14 +73,16 @@ def test_full_cross_component_workflow(client: TestClient, db_session: Session):
             "title": "OS Memory Management Chapter",
         },
         files={"file": ("memory_management.txt", io.BytesIO(doc_content.encode("utf-8")), "text/plain")},
+        headers=headers,
     )
     assert upload_resp.status_code == 201
     doc_data = upload_resp.json()
+
     doc_id = doc_data["document_id"]
     assert doc_id is not None
     assert doc_data["status"] == "uploaded"
 
-    proc_resp = client.post(f"/api/documents/{doc_id}/process?user_id={user_id}")
+    proc_resp = client.post(f"/api/documents/{doc_id}/process?user_id={user_id}", headers=headers)
     assert proc_resp.status_code == 200
     proc_data = proc_resp.json()
     assert proc_data["status"] == "processed"
@@ -94,11 +99,13 @@ def test_full_cross_component_workflow(client: TestClient, db_session: Session):
             "course_id": "CS302",
             "top_k": 3,
         },
+        headers=headers,
     )
     assert search_resp.status_code == 200
     search_results = search_resp.json()["results"]
     assert len(search_results) > 0
     assert any("TLB" in r["content"] or "Translation Lookaside Buffer" in r["content"] for r in search_results)
+
 
     # =========================================================================
     # Step 4: Person 3 - Exam Scheduling (3 days away -> Targeted Weak-Topic Focus)
@@ -189,7 +196,7 @@ def test_full_cross_component_workflow(client: TestClient, db_session: Session):
     db_session.add(mastery)
     db_session.commit()
 
-    rec_resp = client.get(f"/api/progress/recommendations?user_id={user_id}")
+    rec_resp = client.get(f"/api/progress/recommendations?user_id={user_id}", headers=headers)
     assert rec_resp.status_code == 200
     recs = rec_resp.json()["recommendations"]
     assert len(recs) > 0
@@ -208,6 +215,7 @@ def test_full_cross_component_workflow(client: TestClient, db_session: Session):
             "end_date": (today + timedelta(days=3)).isoformat(),
             "available_minutes_per_day": 120,
         },
+        headers=headers,
     )
     assert plan_resp.status_code == 201
     plan = plan_resp.json()
@@ -221,7 +229,7 @@ def test_full_cross_component_workflow(client: TestClient, db_session: Session):
     # =========================================================================
     # Step 9: Person 4 - Today's Plan & Weekly Report
     # =========================================================================
-    today_resp = client.get(f"/api/plans/today?user_id={user_id}&target_date={today.isoformat()}")
+    today_resp = client.get(f"/api/plans/today?user_id={user_id}&target_date={today.isoformat()}", headers=headers)
     assert today_resp.status_code == 200
     today_plan = today_resp.json()
     assert today_plan["total_scheduled_minutes"] <= 120
@@ -233,9 +241,11 @@ def test_full_cross_component_workflow(client: TestClient, db_session: Session):
             "week_start": today.isoformat(),
             "week_end": (today + timedelta(days=6)).isoformat(),
         },
+        headers=headers,
     )
     assert report_resp.status_code == 201
     report = report_resp.json()
+
     assert "study_time_minutes" in report
     assert "recommendations" in report
     assert "upcoming_exams" in report

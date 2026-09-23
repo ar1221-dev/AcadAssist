@@ -58,13 +58,16 @@ def _generate_dbms_textbook_pdf() -> bytes:
     return buffer.getvalue()
 
 
-def test_e2e_operating_systems_pdf_pipeline(client, db_session, sample_academic_entities):
+def test_e2e_operating_systems_pdf_pipeline(client, db_session, sample_academic_entities, auth_headers):
     entities = sample_academic_entities
     alice_id = entities["user_a"].user_id
     bob_id = entities["user_b"].user_id
     course_id = entities["course"].course_id
     subject_os = entities["subject_os"].subject_id
     subject_db = entities["subject_db"].subject_id
+
+    alice_headers = auth_headers(alice_id)
+    bob_headers = auth_headers(bob_id)
 
     # 1. Alice uploads OS Textbook PDF
     os_pdf_bytes = _generate_os_textbook_pdf()
@@ -78,6 +81,7 @@ def test_e2e_operating_systems_pdf_pipeline(client, db_session, sample_academic_
             "description": "Operating Systems Textbook - Scheduling, Deadlocks, Memory",
         },
         files={"file": ("OS_Unit_3.pdf", io.BytesIO(os_pdf_bytes), "application/pdf")},
+        headers=alice_headers,
     )
     assert upload_os_resp.status_code == 201
     os_doc_data = upload_os_resp.json()
@@ -96,18 +100,20 @@ def test_e2e_operating_systems_pdf_pipeline(client, db_session, sample_academic_
             "description": "Database Normalization and Indexing",
         },
         files={"file": ("DBMS_Unit_1.pdf", io.BytesIO(dbms_pdf_bytes), "application/pdf")},
+        headers=bob_headers,
     )
     assert upload_dbms_resp.status_code == 201
     dbms_doc_id = upload_dbms_resp.json()["document_id"]
 
     # 3. Process Alice's OS PDF through full pipeline
-    proc_resp = client.post(f"/api/documents/{os_doc_id}/process?user_id={alice_id}")
+    proc_resp = client.post(f"/api/documents/{os_doc_id}/process?user_id={alice_id}", headers=alice_headers)
     assert proc_resp.status_code == 200
     assert proc_resp.json()["status"] == "processed"
     assert proc_resp.json()["processed_at"] is not None
 
     # Also process Bob's document
-    client.post(f"/api/documents/{dbms_doc_id}/process?user_id={bob_id}")
+    client.post(f"/api/documents/{dbms_doc_id}/process?user_id={bob_id}", headers=bob_headers)
+
 
     # 4. Alice executes Knowledge Search: 'Explain deadlock prevention'
     search_result = search_knowledge(

@@ -1,11 +1,11 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   CheckCircle2, FileQuestion, History, RotateCcw, Sparkles, Target, X, Clock3,
   AlertCircle, AlertTriangle, ArrowRight, ArrowLeft, Bookmark, Check,
   BookOpen, Timer, Lightbulb, Layers
 } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { useApp, type Quiz, RECENT_ATTEMPTS } from '../context/AppContext';
+import { useApp, type Quiz } from '../context/AppContext';
 import Modal from '../components/ui/Modal';
 
 const TOPICS = [
@@ -156,7 +156,10 @@ const BANK: Record<string, { q: string; options: string[]; answer: number; expla
 type AssessmentSource = 'Topic' | 'Subject' | 'Knowledge' | 'Notes' | 'Weak Topics';
 
 export default function Assessment() {
-  const { subjects, knowledgeMaterials, notes, quizzes, addQuiz, updateQuiz, pushToast, weakTopics } = useApp();
+  const {
+    subjects, knowledgeMaterials, notes, quizzes, addQuiz, updateQuiz,
+    pushToast, weakTopics, quizAttempts, reloadAppData
+  } = useApp();
   const [params] = useSearchParams();
 
   const initialSourceParam = params.get('source');
@@ -292,7 +295,45 @@ export default function Assessment() {
     setConfirm(false);
     setShowReview(false);
     pushToast(`Quiz submitted — ${score}%`);
-  }, [active, answers, updateQuiz, pushToast]);
+    reloadAppData();
+  }, [active, answers, updateQuiz, pushToast, reloadAppData]);
+
+  interface DisplayAttempt {
+    id: string;
+    topic: string;
+    subject: string;
+    percentage: string;
+    scoreFraction: string;
+    date: string;
+    isPassed: boolean;
+    isExcellent: boolean;
+  }
+
+  const userAttempts: DisplayAttempt[] = useMemo(() => {
+    if (quizAttempts && quizAttempts.length > 0) {
+      return quizAttempts.map(a => ({
+        id: a.attemptId,
+        topic: a.title,
+        subject: a.subject,
+        percentage: `${Math.round(a.percentage)}%`,
+        scoreFraction: `${a.score} / ${a.total}`,
+        date: a.completedAt ? new Date(a.completedAt).toLocaleDateString() : 'Recently',
+        isPassed: a.percentage >= 70,
+        isExcellent: a.percentage >= 85,
+      }));
+    }
+    const completedLocal = quizzes.filter(q => q.score !== undefined);
+    return completedLocal.map(q => ({
+      id: q.id,
+      topic: q.title,
+      subject: q.subject,
+      percentage: `${q.score}%`,
+      scoreFraction: `${Math.round(((q.score || 0) * q.questions.length) / 100)} / ${q.questions.length}`,
+      date: q.completedAt ? new Date(q.completedAt).toLocaleDateString() : 'Today',
+      isPassed: (q.score || 0) >= 70,
+      isExcellent: (q.score || 0) >= 85,
+    }));
+  }, [quizAttempts, quizzes]);
 
   useEffect(() => {
     if (active && mode && result === null && timer === 0) submit();
@@ -504,43 +545,49 @@ export default function Assessment() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {weakTopics.map(wt => (
-            <div key={wt.id} className="card p-4 flex flex-col justify-between border-t-2 border-t-[var(--color-green-accent)]">
-              <div>
-                <div className="flex justify-between items-start mb-2">
-                  <span className="soft-badge text-[.65rem]">{wt.subject}</span>
-                  <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded">
-                    {wt.accuracyScore}% score
-                  </span>
-                </div>
-                <h3 className="text-sm font-bold">{wt.topic}</h3>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
-                  {wt.recommendedAction}
-                </p>
-                {wt.examName && (
-                  <div className="flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400 font-semibold mt-2.5">
-                    <AlertTriangle size={13} /> {wt.examName} in {wt.daysToExam} days
+        {weakTopics.length === 0 ? (
+          <div className="card p-5 text-center text-xs text-[var(--color-text-muted)]">
+            No weak topics detected yet. Complete practice assessments to identify specific topics requiring focused revision.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {weakTopics.map(wt => (
+              <div key={wt.id} className="card p-4 flex flex-col justify-between border-t-2 border-t-[var(--color-green-accent)]">
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="soft-badge text-[.65rem]">{wt.subject}</span>
+                    <span className="text-xs font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded">
+                      {wt.accuracyScore}% score
+                    </span>
                   </div>
-                )}
+                  <h3 className="text-sm font-bold">{wt.topic}</h3>
+                  <p className="text-xs text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
+                    {wt.recommendedAction}
+                  </p>
+                  {wt.examName && (
+                    <div className="flex items-center gap-1.5 text-xs text-orange-600 dark:text-orange-400 font-semibold mt-2.5">
+                      <AlertTriangle size={13} /> {wt.examName} in {wt.daysToExam} days
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    className="btn primary flex-1 text-xs"
+                    onClick={() => startQuizFromTopic(wt.topic.split(' ')[0], wt.subject, false)}
+                  >
+                    <Target size={14} /> Practice
+                  </button>
+                  <button
+                    className="btn secondary text-xs"
+                    onClick={() => startQuizFromTopic(wt.topic.split(' ')[0], wt.subject, true)}
+                  >
+                    <Clock3 size={13} /> Timed
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2 mt-4">
-                <button
-                  className="btn primary flex-1 text-xs"
-                  onClick={() => startQuizFromTopic(wt.topic.split(' ')[0], wt.subject, false)}
-                >
-                  <Target size={14} /> Practice
-                </button>
-                <button
-                  className="btn secondary text-xs"
-                  onClick={() => startQuizFromTopic(wt.topic.split(' ')[0], wt.subject, true)}
-                >
-                  <Clock3 size={13} /> Timed
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Recent Attempts and Practice History */}
@@ -555,37 +602,43 @@ export default function Assessment() {
           </button>
         </div>
 
-        <div className="card p-2 divide-y divide-[var(--color-border-light)]">
-          {RECENT_ATTEMPTS.map((att, idx) => (
-            <div key={idx} className="flex items-center justify-between p-3 gap-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${
-                    att.status === 'excellent'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400'
-                      : att.status === 'passed'
-                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400'
-                      : 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
-                  }`}
+        {userAttempts.length === 0 ? (
+          <div className="card p-5 text-center text-xs text-[var(--color-text-muted)]">
+            No recent quiz attempts recorded yet. Select any topic above and click &quot;Generate assessment&quot; to test your knowledge.
+          </div>
+        ) : (
+          <div className="card p-2 divide-y divide-[var(--color-border-light)]">
+            {userAttempts.map((att) => (
+              <div key={att.id} className="flex items-center justify-between p-3 gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs ${
+                      att.isExcellent
+                        ? 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-400'
+                        : att.isPassed
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400'
+                        : 'bg-amber-100 text-amber-700 dark:bg-amber-950/50 dark:text-amber-400'
+                    }`}
+                  >
+                    {att.percentage}
+                  </div>
+                  <div>
+                    <b className="text-xs text-[var(--color-text-dark)] block">{att.topic}</b>
+                    <small className="text-[.65rem] text-[var(--color-text-muted)]">
+                      Subject: {att.subject} · Score: {att.scoreFraction} · Date: {att.date}
+                    </small>
+                  </div>
+                </div>
+                <button
+                  className="btn subtle text-xs"
+                  onClick={() => startQuizFromTopic(att.topic.split(' ')[0], att.subject, false)}
                 >
-                  {att.percentage}
-                </div>
-                <div>
-                  <b className="text-xs text-[var(--color-text-dark)] block">{att.topic}</b>
-                  <small className="text-[.65rem] text-[var(--color-text-muted)]">
-                    Difficulty: {att.difficulty} · Score: {att.scoreFraction} · Date: {att.date} (Sample Data)
-                  </small>
-                </div>
+                  <RotateCcw size={13} /> Retry topic
+                </button>
               </div>
-              <button
-                className="btn subtle text-xs"
-                onClick={() => startQuizFromTopic(att.topic.split(' ')[0], 'Operating Systems', false)}
-              >
-                <RotateCcw size={13} /> Retry topic
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Active Full-Screen Quiz Experience */}

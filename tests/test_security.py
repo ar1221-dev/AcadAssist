@@ -80,7 +80,7 @@ def test_mandatory_user_search_isolation(search_service):
     assert results_b[0]["page_number"] == 14
 
 
-def test_unauthorized_document_operations(client, db_session, sample_academic_entities):
+def test_unauthorized_document_operations(client, db_session, sample_academic_entities, auth_headers):
     """Verify unauthorized GET, DELETE, PROCESS, and SUMMARIZE are strictly forbidden."""
     entities = sample_academic_entities
 
@@ -100,26 +100,29 @@ def test_unauthorized_document_operations(client, db_session, sample_academic_en
     db_session.commit()
 
     alice_id = entities["user_a"].user_id
+    alice_headers = auth_headers(alice_id)
 
     # 1. User A tries to GET User B's document -> 403 Forbidden
-    resp_get = client.get(f"/api/documents/{doc_bob.document_id}?user_id={alice_id}")
+    resp_get = client.get(f"/api/documents/{doc_bob.document_id}?user_id={alice_id}", headers=alice_headers)
     assert resp_get.status_code == 403
-    assert "Forbidden" in resp_get.json()["detail"]
+    assert "Forbidden" in resp_get.json()["detail"] or "Access denied" in resp_get.json()["detail"]
 
     # 2. User A tries to DELETE User B's document -> 403 Forbidden
-    resp_del = client.delete(f"/api/documents/{doc_bob.document_id}?user_id={alice_id}")
+    resp_del = client.delete(f"/api/documents/{doc_bob.document_id}?user_id={alice_id}", headers=alice_headers)
     assert resp_del.status_code == 403
-    assert "Forbidden" in resp_del.json()["detail"]
+    assert "Forbidden" in resp_del.json()["detail"] or "Access denied" in resp_del.json()["detail"]
 
     # 3. User A tries to PROCESS User B's document -> 403 Forbidden
-    resp_proc = client.post(f"/api/documents/{doc_bob.document_id}/process?user_id={alice_id}")
+    resp_proc = client.post(f"/api/documents/{doc_bob.document_id}/process?user_id={alice_id}", headers=alice_headers)
     assert resp_proc.status_code == 403
-    assert "Forbidden" in resp_proc.json()["detail"]
+    assert "Forbidden" in resp_proc.json()["detail"] or "Access denied" in resp_proc.json()["detail"]
 
     # 4. User A tries to SUMMARIZE User B's document -> 403 Forbidden
     resp_sum = client.post(
         f"/api/documents/{doc_bob.document_id}/summarize?user_id={alice_id}",
         json={"mode": "quick"},
+        headers=alice_headers,
     )
     assert resp_sum.status_code == 403
-    assert "Forbidden" in resp_sum.json()["detail"]
+    assert "Forbidden" in resp_sum.json()["detail"] or "Access denied" in resp_sum.json()["detail"]
+

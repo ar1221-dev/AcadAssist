@@ -15,7 +15,9 @@ from app.database.session import init_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan managing database table initialization."""
+    """Application lifespan managing production validation and database table initialization."""
+    if settings.is_production():
+        settings.validate_production_azure()
     init_db()
     yield
 
@@ -32,7 +34,7 @@ def create_app() -> FastAPI:
     # Configure CORS for React frontend integration
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=settings.cors_allowed_origins,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -44,15 +46,42 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["Health"])
     def health_check():
-        """Unified health check endpoint confirming subsystem readiness."""
+        """Unified health check endpoint confirming subsystem readiness and cloud/local configuration."""
+        foundry_configured = settings.is_foundry_configured
+        storage_configured = settings.is_storage_configured
+        search_configured = settings.is_search_configured
+        embedding_configured = bool(
+            settings.AZURE_OPENAI_API_KEY or settings.AZURE_API_KEY or settings.OPENAI_API_KEY
+        )
+
         return {
             "status": "healthy",
+            "service": "AcadAssist API",
+            "environment": settings.ENVIRONMENT,
             "app": "AcadAssist",
             "version": "2.0.0",
             "subsystems": {
                 "knowledge_rag": "operational",
                 "assessment": "operational",
                 "study_intelligence": "operational",
+            },
+            "foundry": {
+                "mode": "cloud_foundry" if foundry_configured else "local_orchestrator",
+                "configured": foundry_configured,
+            },
+            "azure_storage": {
+                "mode": "azure_blob" if storage_configured else "local_storage",
+                "configured": storage_configured,
+            },
+            "azure_search": {
+                "mode": "azure_ai_search" if search_configured else "local_hybrid_index",
+                "configured": search_configured,
+            },
+            "embeddings": {
+                "mode": "azure_openai" if embedding_configured else "local_deterministic",
+                "configured": embedding_configured,
+                "model": settings.EMBEDDING_MODEL,
+                "dimensions": settings.EMBEDDING_DIMENSIONS,
             },
             "embedding_model": settings.EMBEDDING_MODEL,
             "embedding_dimensions": settings.EMBEDDING_DIMENSIONS,

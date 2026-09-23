@@ -34,6 +34,15 @@ class LocalHybridSearchIndex:
             del self._docs[cid]
         return len(to_delete)
 
+    def update_chunks_visibility(self, document_id: str, visibility: str) -> int:
+        """Update visibility field for all chunks belonging to document_id."""
+        updated = 0
+        for doc in self._docs.values():
+            if doc.get("document_id") == document_id:
+                doc["visibility"] = visibility
+                updated += 1
+        return updated
+
     @staticmethod
     def _cosine_similarity(vec1: list[float], vec2: list[float]) -> float:
         if not vec1 or not vec2 or len(vec1) != len(vec2):
@@ -85,10 +94,11 @@ class LocalHybridSearchIndex:
     ) -> list[dict[str, Any]]:
         query_tokens = [t for t in re.findall(r"\w+", query) if len(t) > 2]
         scored_candidates = []
-
         for doc in self._docs.values():
-            # Mandatory server-side user isolation
-            if doc.get("user_id") != user_id:
+            # Mandatory server-side user isolation and visibility control
+            is_owner = doc.get("user_id") == user_id
+            is_public = doc.get("visibility") == "public"
+            if not (is_owner or is_public):
                 continue
 
             # Optional course and subject filters
@@ -153,11 +163,11 @@ class AzureSearchService:
         self.local_index: LocalHybridSearchIndex | None = None
         self.search_client = None
 
-        has_credentials = bool(self.endpoint and self.api_key)
+        has_credentials = bool(self.endpoint and (self.api_key or settings.AZURE_SEARCH_ENDPOINT))
 
         if settings.is_production():
-            if not has_credentials:
-                raise ValueError("AZURE_SEARCH_ENDPOINT and AZURE_SEARCH_KEY are required in production.")
+            if not self.endpoint:
+                raise ValueError("AZURE_SEARCH_ENDPOINT is required in production.")
             self._init_azure_client()
         else:
             if has_credentials:
@@ -171,7 +181,6 @@ class AzureSearchService:
                 self.local_index = LocalHybridSearchIndex()
 
     def _init_azure_client(self):
-        from azure.core.credentials import AzureKeyCredential
         from azure.search.documents import SearchClient
         from azure.search.documents.indexes import SearchIndexClient
         from azure.search.documents.indexes.models import (
@@ -186,18 +195,45 @@ class AzureSearchService:
             VectorSearchProfile,
         )
 
-        credential = AzureKeyCredential(self.api_key)
+        if self.api_key:
+            from azure.core.credentials import AzureKeyCredential
+            credential = AzureKeyCredential(self.api_key)
+        else:
+            from app.azure.credentials import get_azure_credential
+            credential = get_azure_credential()
+
         index_client = SearchIndexClient(endpoint=self.endpoint, credential=credential)
 
-        # Ensure index exists
+        # Ensure the index exists and has the authorization fields required by RAG.
+        # `visibility` is part of the security filter, so an existing index created
+        # before this field was introduced must be updated before it is used.
         try:
-            index_client.get_index(self.index_name)
+            existing_index = index_client.get_index(self.index_name)
         except Exception:
             logger.info(f"Creating Azure AI Search index '{self.index_name}'...")
+            existing_index = None
+
+        if existing_index is not None:
+            existing_field_names = {field.name for field in existing_index.fields}
+            if "visibility" not in existing_field_names:
+                logger.info(
+                    "Updating Azure AI Search index '%s' to add filterable visibility field.",
+                    self.index_name,
+                )
+                existing_index.fields.append(
+                    SimpleField(
+                        name="visibility",
+                        type=SearchFieldDataType.String,
+                        filterable=True,
+                    )
+                )
+                index_client.create_or_update_index(existing_index)
+        else:
             fields = [
                 SimpleField(name="id", type=SearchFieldDataType.String, key=True),
                 SimpleField(name="chunk_id", type=SearchFieldDataType.String, filterable=True),
                 SimpleField(name="user_id", type=SearchFieldDataType.String, filterable=True),
+                SimpleField(name="visibility", type=SearchFieldDataType.String, filterable=True),
                 SimpleField(name="course_id", type=SearchFieldDataType.String, filterable=True),
                 SimpleField(name="subject_id", type=SearchFieldDataType.String, filterable=True),
                 SimpleField(name="document_id", type=SearchFieldDataType.String, filterable=True),
@@ -244,6 +280,7 @@ class AzureSearchService:
                 "id": chunk.chunk_id,
                 "chunk_id": chunk.chunk_id,
                 "user_id": chunk.user_id,
+                "visibility": getattr(chunk, "visibility", "private"),
                 "course_id": chunk.course_id,
                 "subject_id": chunk.subject_id,
                 "document_id": chunk.document_id,
@@ -289,6 +326,23 @@ class AzureSearchService:
         if keys_to_delete:
             self.search_client.delete_documents(documents=keys_to_delete)
 
+    def update_chunks_visibility(self, document_id: str, visibility: str) -> int:
+        """Update visibility field for all chunks of a document in search index."""
+        if self.local_index is not None:
+            return self.local_index.update_chunks_visibility(document_id, visibility)
+
+        filter_expr = f"document_id eq '{document_id}'"
+        results = self.search_client.search(
+            search_text="",
+            filter=filter_expr,
+            select=["id"],
+        )
+        keys_to_update = [{"id": r["id"], "visibility": visibility} for r in results]
+        if keys_to_update:
+            self.search_client.merge_documents(documents=keys_to_update)
+            return len(keys_to_update)
+        return 0
+
     def search_hybrid(
         self,
         query: str,
@@ -311,8 +365,8 @@ class AzureSearchService:
 
         from azure.search.documents.models import VectorizedQuery
 
-        # Build server-side OData security filter: mandatory user_id
-        filter_parts = [f"user_id eq '{user_id}'"]
+        # Build server-side OData security filter: owner user_id or public visibility
+        filter_parts = [f"(user_id eq '{user_id}' or visibility eq 'public')"]
         if course_id:
             filter_parts.append(f"course_id eq '{course_id}'")
         if subject_id:

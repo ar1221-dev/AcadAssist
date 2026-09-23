@@ -22,22 +22,50 @@ export interface StudyRecommendation {
   isDemo?: boolean;
 }
 
+function getAuthHeader(): Record<string, string> {
+  try {
+    const token = localStorage.getItem('acadassist.auth.token');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const url = API_BASE ? `${API_BASE}${path}` : path;
   const response = await fetch(url, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+      ...(init?.headers || {}),
+    },
   });
   if (!response.ok) throw new Error((await response.text()) || `Request failed (${response.status})`);
   return response.json() as Promise<T>;
 }
 
 export async function sendChatMessage(message: string, materialId?: string): Promise<{ text: string }> {
-  return { text: localAssistantResponse(message, materialId) };
+  void materialId;
+  const res = await request<{ message: string; sources?: any[]; actions?: any[]; execution_mode?: string }>('/api/chat', {
+    method: 'POST',
+    body: JSON.stringify({ message }),
+  });
+  return { text: res.message };
 }
 
 // Person 2: Document Management Endpoints (/api/documents)
-export async function fetchDocuments(userId = 'default_student_user'): Promise<DocumentUploadResponse[] | null> {
+export interface DocumentUploadResponse {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url?: string;
+  uploadedAt: string;
+  isDemo?: boolean;
+}
+
+export async function fetchDocuments(): Promise<DocumentUploadResponse[] | null> {
   try {
     const res = await request<{
       documents: Array<{
@@ -46,14 +74,15 @@ export async function fetchDocuments(userId = 'default_student_user'): Promise<D
         title: string;
         file_type: string;
         status: string;
+        size_bytes?: number;
         uploaded_at: string;
       }>;
       total: number;
-    }>(`/api/documents?user_id=${encodeURIComponent(userId)}`);
+    }>('/api/documents');
     return res.documents.map(d => ({
       id: d.document_id,
       name: d.filename || d.title,
-      size: 0,
+      size: d.size_bytes || 0,
       type: d.file_type || 'application/pdf',
       uploadedAt: d.uploaded_at,
       isDemo: false,
@@ -63,8 +92,63 @@ export async function fetchDocuments(userId = 'default_student_user'): Promise<D
   }
 }
 
-// Person 3 / Person 4: Weak Topics (/api/performance/weak-topics or fallback)
-export async function fetchWeakTopics(userId = 'default_student_user'): Promise<WeakTopic[]> {
+export async function uploadDocument(
+  file: File | { name: string; size: number; type: string }
+): Promise<DocumentUploadResponse> {
+  if (!(file instanceof File)) {
+    throw new Error('A real File object is required for document upload.');
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('title', file.name);
+  formData.append('visibility', 'private');
+
+  const url = API_BASE ? `${API_BASE}/api/documents` : '/api/documents';
+  const token = localStorage.getItem('acadassist.auth.token');
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error((await response.text()) || `Document upload failed (${response.status})`);
+  }
+
+  const data = await response.json();
+  if (!data.document_id) {
+    throw new Error('Document upload succeeded without a document ID.');
+  }
+
+  return {
+    id: data.document_id,
+    name: data.filename || file.name,
+    size: file.size,
+    type: file.type || 'application/pdf',
+    uploadedAt: data.created_at || new Date().toISOString(),
+    isDemo: false,
+  };
+}
+
+export async function downloadDocument(documentId: string, filename: string): Promise<void> {
+  const url = API_BASE ? `${API_BASE}/api/documents/${encodeURIComponent(documentId)}/download` : `/api/documents/${encodeURIComponent(documentId)}/download`;
+  const token = localStorage.getItem('acadassist.auth.token');
+  const res = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error(`Download failed with status ${res.status}`);
+  const blob = await res.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+}
+
+// Person 3 / Person 4: Weak Topics (/api/performance/weak-topics)
+export async function fetchWeakTopics(): Promise<WeakTopic[]> {
   try {
     const res = await request<{
       topics?: Array<{
@@ -76,10 +160,7 @@ export async function fetchWeakTopics(userId = 'default_student_user'): Promise<
         recommended_action?: string;
         recommended_difficulty?: string;
       }>;
-    }>(
-      '/api/performance/weak-topics',
-      { headers: { 'X-User-ID': userId } }
-    );
+    }>('/api/performance/weak-topics');
     if (res?.topics && res.topics.length > 0) {
       return res.topics.map(t => {
         const accuracy = t.mastery !== undefined ? t.mastery : (t.accuracy_rate !== undefined ? t.accuracy_rate : 0.5);
@@ -96,55 +177,20 @@ export async function fetchWeakTopics(userId = 'default_student_user'): Promise<
       });
     }
   } catch {
-    // Graceful fallback to local demo data
+    // empty state
   }
-  // Local deterministic fallback (Sample / Demo Data)
-  return [
-    {
-      id: 'wt-1',
-      topic: 'Deadlocks & Coffman Conditions',
-      subject: 'Operating Systems',
-      accuracyScore: 58,
-      recommendedAction: 'Review circular wait prevention and solve 5 deadlock practice problems.',
-      examUrgency: 'urgent',
-      examName: 'Operating Systems Midterm',
-      daysToExam: 5,
-      isDemo: true,
-    },
-    {
-      id: 'wt-2',
-      topic: 'Transport Layer & Flow Control',
-      subject: 'Computer Networks',
-      accuracyScore: 50,
-      recommendedAction: 'Review TCP sliding window mechanics and take a 10-question practice quiz.',
-      examUrgency: 'high',
-      examName: 'Computer Networks Exam',
-      daysToExam: 12,
-      isDemo: true,
-    },
-    {
-      id: 'wt-3',
-      topic: 'B+ Tree Indexing & Hash Indices',
-      subject: 'Database Management Systems',
-      accuracyScore: 65,
-      recommendedAction: 'Study multi-level indexing node splits and query retrieval bounds.',
-      examUrgency: 'medium',
-      examName: 'Database Systems Comprehensive',
-      daysToExam: 19,
-      isDemo: true,
-    },
-  ];
+  return [];
 }
 
-export async function fetchStudyRecommendation(): Promise<StudyRecommendation> {
+export async function fetchStudyRecommendation(): Promise<StudyRecommendation | null> {
   const recs = await fetchStudyRecommendations();
-  return recs[0];
+  return recs.length > 0 ? recs[0] : null;
 }
 
-export async function fetchStudyRecommendations(userId = 'default_student_user'): Promise<StudyRecommendation[]> {
+export async function fetchStudyRecommendations(): Promise<StudyRecommendation[]> {
   try {
     const res = await request<{ recommendations?: Array<{ topic_name: string; reason: string; action: string; urgency: string }> }>(
-      `/api/progress/recommendations?user_id=${encodeURIComponent(userId)}`
+      '/api/progress/recommendations'
     );
     if (res?.recommendations && res.recommendations.length > 0) {
       return res.recommendations.map(r => ({
@@ -157,26 +203,135 @@ export async function fetchStudyRecommendations(userId = 'default_student_user')
       }));
     }
   } catch {
-    // Graceful fallback to local demo data
+    // empty state
   }
-  return [
-    {
-      subjectName: 'Operating Systems',
-      topicName: 'Deadlocks & Coffman Conditions',
-      reason: 'Exam in 5 days with current diagnostic score of 58%.',
-      suggestedDuration: '45 min',
-      actionType: 'study',
-      isDemo: true,
-    },
-    {
-      subjectName: 'Computer Networks',
-      topicName: 'Transport Layer & Flow Control',
-      reason: 'Accuracy score at 50% across recent practice tests.',
-      suggestedDuration: '30 min',
-      actionType: 'quiz',
-      isDemo: true,
-    },
-  ];
+  return [];
+}
+
+export interface PerformanceMetrics {
+  userId: string;
+  overallAccuracy: number;
+  recentAccuracy: number;
+  attemptCount: number;
+  totalQuestionsAttempted: number;
+  totalCorrect: number;
+  totalIncorrect: number;
+  topicMastery: Record<string, number>;
+  weakTopics: Array<{ topicId: string; topic: string; mastery: number }>;
+  strongTopics: Array<{ topicId: string; topic: string; mastery: number }>;
+}
+
+export async function fetchPerformanceMetrics(): Promise<PerformanceMetrics | null> {
+  try {
+    const res = await request<{
+      user_id: string;
+      overall_accuracy: number;
+      recent_accuracy: number;
+      attempt_count: number;
+      total_questions_attempted: number;
+      total_correct: number;
+      total_incorrect: number;
+      topic_mastery: Record<string, number>;
+      weak_topics: Array<{ topic_id: string; topic: string; mastery: number }>;
+      strong_topics: Array<{ topic_id: string; topic: string; mastery: number }>;
+    }>('/api/performance');
+    if (res) {
+      return {
+        userId: res.user_id,
+        overallAccuracy: res.overall_accuracy,
+        recentAccuracy: res.recent_accuracy,
+        attemptCount: res.attempt_count,
+        totalQuestionsAttempted: res.total_questions_attempted,
+        totalCorrect: res.total_correct,
+        totalIncorrect: res.total_incorrect,
+        topicMastery: res.topic_mastery || {},
+        weakTopics: (res.weak_topics || []).map(w => ({ topicId: w.topic_id, topic: w.topic, mastery: w.mastery })),
+        strongTopics: (res.strong_topics || []).map(s => ({ topicId: s.topic_id, topic: s.topic, mastery: s.mastery })),
+      };
+    }
+  } catch {
+    // empty state
+  }
+  return null;
+}
+
+export interface BackendUpcomingExam {
+  examId: string;
+  userId: string;
+  subjectId: string;
+  title: string;
+  examDate: string;
+  daysUntilExam?: number;
+  assessmentFocus?: string;
+}
+
+export async function fetchUpcomingExams(): Promise<BackendUpcomingExam[]> {
+  try {
+    const res = await request<Array<{
+      exam_id: string;
+      user_id: string;
+      subject_id: string;
+      title: string;
+      exam_date: string;
+      days_until_exam?: number;
+      assessment_focus?: string;
+    }>>('/api/exams/upcoming');
+    if (Array.isArray(res)) {
+      return res.map(e => ({
+        examId: e.exam_id,
+        userId: e.user_id,
+        subjectId: e.subject_id,
+        title: e.title,
+        examDate: e.exam_date,
+        daysUntilExam: e.days_until_exam,
+        assessmentFocus: e.assessment_focus,
+      }));
+    }
+  } catch {
+    // empty state
+  }
+  return [];
+}
+
+export interface QuizAttemptRecord {
+  attemptId: string;
+  quizId: string;
+  title: string;
+  subject: string;
+  score: number;
+  total: number;
+  percentage: number;
+  completedAt: string | null;
+}
+
+export async function fetchQuizAttempts(): Promise<QuizAttemptRecord[]> {
+  try {
+    const res = await request<Array<{
+      attempt_id: string;
+      quiz_id: string;
+      title: string;
+      subject: string;
+      score: number;
+      total: number;
+      percentage: number;
+      completed_at: string | null;
+    }>>('/api/quizzes/attempts');
+    if (Array.isArray(res)) {
+      return res.map(r => ({
+        attemptId: r.attempt_id,
+        quizId: r.quiz_id,
+        title: r.title,
+        subject: r.subject,
+        score: r.score,
+        total: r.total,
+        percentage: r.percentage,
+        completedAt: r.completed_at,
+      }));
+    }
+  } catch {
+    // empty state
+  }
+  return [];
 }
 
 export interface QuizGenerationRequest {
@@ -205,54 +360,44 @@ export interface GeneratedQuizResponse {
 }
 
 export async function generateQuiz(req: QuizGenerationRequest): Promise<GeneratedQuizResponse> {
-  try {
-    const subjectId = req.subject?.toLowerCase().replace(/\s+/g, '_') || 'operating_systems';
-    const topicId = req.topic || 'General';
-    const res = await request<{
-      quiz_id?: string;
-      title?: string;
-      questions?: Array<{
-        question_id: string;
-        question_text: string;
-        options: string[];
-        explanation?: string;
-      }>;
-    }>('/api/quizzes', {
-      method: 'POST',
-      headers: { 'X-User-ID': 'default_student_user' },
-      body: JSON.stringify({
-        subject_id: subjectId,
-        topic_ids: [topicId],
-        count: req.questionCount || 5,
-        title: `${req.topic} — ${req.isExam ? 'Timed Assessment' : 'Practice Quiz'}`,
-      }),
-    });
-    if (res?.quiz_id && res.questions && res.questions.length > 0) {
-      return {
-        id: res.quiz_id,
-        title: res.title || `${req.topic} — Practice Quiz`,
-        source: req.topic,
-        subject: req.subject || 'Computer Science',
-        questions: res.questions.map(q => ({
-          id: q.question_id,
-          text: q.question_text,
-          options: q.options || [],
-          answer: 0,
-          explanation: q.explanation || '',
-        })),
-        isDemo: false,
-      };
-    }
-  } catch {
-    // Fall back to deterministic local questions
+  const subjectId = req.subject?.toLowerCase().replace(/\s+/g, '_') || 'operating_systems';
+  const topicId = req.topic || 'General';
+  const res = await request<{
+    quiz_id?: string;
+    title?: string;
+    questions?: Array<{
+      question_id: string;
+      question_text: string;
+      options: string[];
+      explanation?: string;
+    }>;
+  }>('/api/quizzes', {
+    method: 'POST',
+    body: JSON.stringify({
+      subject_id: subjectId,
+      topic_ids: [topicId],
+      count: req.questionCount || 5,
+      title: `${req.topic} — ${req.isExam ? 'Timed Assessment' : 'Practice Quiz'}`,
+    }),
+  });
+
+  if (!res?.quiz_id || !res.questions || res.questions.length === 0) {
+    throw new Error('Quiz generation returned no questions. Please try again.');
   }
+
   return {
-    id: crypto.randomUUID(),
-    title: `${req.topic} — ${req.isExam ? 'Timed Assessment' : 'Practice Quiz'}`,
+    id: res.quiz_id,
+    title: res.title || `${req.topic} — Practice Quiz`,
     source: req.topic,
     subject: req.subject || 'Computer Science',
-    questions: [],
-    isDemo: true,
+    questions: res.questions.map(q => ({
+      id: q.question_id,
+      text: q.question_text,
+      options: q.options || [],
+      answer: 0,
+      explanation: q.explanation || '',
+    })),
+    isDemo: false,
   };
 }
 
@@ -268,106 +413,38 @@ export interface QuizSubmissionResult {
 
 export async function submitQuiz(
   quizId: string,
-  answers: Array<{ questionId: string; selectedAnswer: string; timeTaken?: number }>,
-  userId = 'default_student_user'
+  answers: Array<{ questionId: string; selectedAnswer: string; timeTaken?: number }>
 ): Promise<QuizSubmissionResult> {
-  try {
-    const res = await request<{
-      attempt_id: string;
-      quiz_id: string;
-      score: number;
-      total: number;
-      percentage: number;
-      weak_topics: Array<{ topic_id: string; topic: string; mastery: number }>;
-    }>(`/api/quizzes/${encodeURIComponent(quizId)}/submit`, {
-      method: 'POST',
-      headers: { 'X-User-ID': userId },
-      body: JSON.stringify({
-        answers: answers.map(a => ({
-          question_id: a.questionId,
-          selected_answer: a.selectedAnswer,
-          time_taken: a.timeTaken || 0.0,
-        })),
-      }),
-    });
-    return {
-      attemptId: res.attempt_id,
-      quizId: res.quiz_id,
-      score: res.score,
-      total: res.total,
-      percentage: res.percentage,
-      weakTopics: (res.weak_topics || []).map(w => ({
-        topicId: w.topic_id,
-        topic: w.topic,
-        mastery: w.mastery,
+  const res = await request<{
+    attempt_id: string;
+    quiz_id: string;
+    score: number;
+    total: number;
+    percentage: number;
+    weak_topics: Array<{ topic_id: string; topic: string; mastery: number }>;
+  }>(`/api/quizzes/${encodeURIComponent(quizId)}/submit`, {
+    method: 'POST',
+    body: JSON.stringify({
+      answers: answers.map(a => ({
+        question_id: a.questionId,
+        selected_answer: a.selectedAnswer,
+        time_taken: a.timeTaken || 0.0,
       })),
-      isDemo: false,
-    };
-  } catch {
-    // Local deterministic fallback
-    const total = answers.length || 5;
-    const score = answers.length;
-    return {
-      attemptId: `attempt-${Date.now()}`,
-      quizId,
-      score,
-      total,
-      percentage: total > 0 ? Math.round((score / total) * 100) : 0,
-      weakTopics: [],
-      isDemo: true,
-    };
-  }
-}
+    }),
+  });
 
-export interface DocumentUploadResponse {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  url?: string;
-  uploadedAt: string;
-  isDemo?: boolean;
-}
-
-export async function uploadDocument(
-  file: File | { name: string; size: number; type: string }
-): Promise<DocumentUploadResponse> {
-  if (file instanceof File) {
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('user_id', 'default_student_user');
-      formData.append('course_id', 'CS302');
-      formData.append('subject_id', 'SUB_OS');
-      formData.append('title', file.name);
-
-      const url = API_BASE ? `${API_BASE}/api/documents` : '/api/documents';
-      const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-      });
-      if (response.ok) {
-        const data = await response.json();
-        return {
-          id: data.document_id || `doc-${Date.now()}`,
-          name: data.filename || file.name,
-          size: file.size,
-          type: file.type || 'application/pdf',
-          uploadedAt: data.created_at || new Date().toISOString(),
-          isDemo: false,
-        };
-      }
-    } catch {
-      // Fall through to local fallback
-    }
-  }
   return {
-    id: `doc-${Date.now()}`,
-    name: file.name,
-    size: file.size,
-    type: file.type || 'application/pdf',
-    uploadedAt: new Date().toISOString(),
-    isDemo: true,
+    attemptId: res.attempt_id,
+    quizId: res.quiz_id,
+    score: res.score,
+    total: res.total,
+    percentage: res.percentage,
+    weakTopics: (res.weak_topics || []).map(w => ({
+      topicId: w.topic_id,
+      topic: w.topic,
+      mastery: w.mastery,
+    })),
+    isDemo: false,
   };
 }
 
@@ -398,25 +475,24 @@ export interface BackendTodayPlan {
   isDemo?: boolean;
 }
 
-export async function fetchTodayPlan(userId = 'default_student_user'): Promise<BackendTodayPlan | null> {
+export async function fetchTodayPlan(): Promise<BackendTodayPlan | null> {
   try {
-    const res = await request<BackendTodayPlan>(`/api/plans/today?user_id=${encodeURIComponent(userId)}`);
+    const res = await request<BackendTodayPlan>('/api/plans/today');
     return { ...res, isDemo: false };
   } catch {
     return null;
   }
 }
 
-export async function fetchStudyPlans(userId = 'default_student_user'): Promise<any[] | null> {
+export async function fetchStudyPlans(): Promise<any[] | null> {
   try {
-    return await request<any[]>(`/api/plans?user_id=${encodeURIComponent(userId)}`);
+    return await request<any[]>('/api/plans');
   } catch {
     return null;
   }
 }
 
 export async function createStudyPlan(payload: {
-  userId?: string;
   startDate: string;
   endDate: string;
   availableMinutesPerDay?: number;
@@ -425,7 +501,6 @@ export async function createStudyPlan(payload: {
     return await request('/api/plans', {
       method: 'POST',
       body: JSON.stringify({
-        user_id: payload.userId || 'default_student_user',
         start_date: payload.startDate,
         end_date: payload.endDate,
         available_minutes_per_day: payload.availableMinutesPerDay || 120,
@@ -438,12 +513,11 @@ export async function createStudyPlan(payload: {
 
 export async function updateTaskStatus(
   taskId: string,
-  status: 'pending' | 'in_progress' | 'completed' | 'skipped',
-  userId = 'default_student_user'
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped'
 ): Promise<BackendStudyTask | null> {
   try {
     return await request<BackendStudyTask>(
-      `/api/tasks/${encodeURIComponent(taskId)}?user_id=${encodeURIComponent(userId)}`,
+      `/api/tasks/${encodeURIComponent(taskId)}`,
       {
         method: 'PATCH',
         body: JSON.stringify({ status }),
@@ -454,45 +528,107 @@ export async function updateTaskStatus(
   }
 }
 
+// Notes API (/api/notes)
+export interface BackendNote {
+  id: string;
+  user_id: string;
+  document_id?: string;
+  title: string;
+  content: string;
+  subject?: string;
+  note_type: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function fetchNotes(): Promise<BackendNote[]> {
+  try {
+    return await request<BackendNote[]>('/api/notes');
+  } catch {
+    return [];
+  }
+}
+
+export async function createNote(payload: {
+  title: string;
+  content: string;
+  subject?: string;
+  note_type?: string;
+  document_id?: string;
+}): Promise<BackendNote | null> {
+  try {
+    return await request<BackendNote>('/api/notes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function updateNote(
+  noteId: string,
+  payload: { title?: string; content?: string; subject?: string; note_type?: string }
+): Promise<BackendNote | null> {
+  try {
+    return await request<BackendNote>(`/api/notes/${encodeURIComponent(noteId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteNote(noteId: string): Promise<boolean> {
+  try {
+    await request(`/api/notes/${encodeURIComponent(noteId)}`, { method: 'DELETE' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Chat API (/api/chat)
+export interface BackendChatMessage {
+  id: string;
+  role: string;
+  text: string;
+  time: string;
+}
+
+export async function fetchChatHistory(): Promise<BackendChatMessage[]> {
+  try {
+    return await request<BackendChatMessage[]>('/api/chat/history');
+  } catch {
+    return [];
+  }
+}
+
+export async function appendChatMessage(role: string, text: string): Promise<BackendChatMessage | null> {
+  try {
+    return await request<BackendChatMessage>('/api/chat/message', {
+      method: 'POST',
+      body: JSON.stringify({ role, text }),
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function clearBackendChatHistory(): Promise<void> {
+  try {
+    await request('/api/chat/history', { method: 'DELETE' });
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function chatWithAssistant(
   message: string,
   context?: { materialId?: string; subject?: string }
 ): Promise<{ text: string }> {
-  if (API_BASE) {
-    try {
-      return await request<{ text: string }>('/assistant/chat', {
-        method: 'POST',
-        body: JSON.stringify({ message, context }),
-      });
-    } catch {
-      // Fall through to local assistant
-    }
-  }
   return sendChatMessage(message, context?.materialId);
-}
-
-function localAssistantResponse(message: string, materialId?: string): string {
-  const contextNote = materialId ? `*(Referencing Document ID: \`${materialId}\` — Local Demo Mode)*\n\n` : '';
-  const q = message.toLowerCase();
-  if (q.includes('tcp') && q.includes('udp')) {
-    return `${contextNote}### TCP vs UDP Protocol Comparison\n\n• **TCP (Transmission Control Protocol)** is connection-oriented and ensures guaranteed, ordered, error-checked delivery via sequence numbers and acknowledgements. Best for web browsing (HTTP/HTTPS), file transfer (FTP), and email.\n• **UDP (User Datagram Protocol)** is connectionless and lightweight without retransmissions or ordering overhead. Best for real-time video streaming, VoIP, DNS lookups, and gaming.\n\n*Key takeaway*: Choose TCP when accuracy is critical; choose UDP when low latency is required.`;
-  }
-  if (q.includes('deadlock')) {
-    return `${contextNote}### Operating System Deadlocks\n\nA deadlock occurs when two or more processes cannot proceed because each is waiting for a resource held by the other.\n\n**Four Coffman Conditions (Must all hold simultaneously):**\n1. **Mutual Exclusion**: At least one resource is held in a non-shareable mode.\n2. **Hold and Wait**: A process holds resources while requesting additional ones.\n3. **No Preemption**: Resources cannot be forcibly revoked.\n4. **Circular Wait**: A closed chain of processes exists where each waits for a resource held by the next.\n\n*Prevention Strategy*: Invalidate any single condition (e.g., impose strict global resource acquisition ordering to prevent circular wait).`;
-  }
-  if (q.includes('cpu scheduling')) {
-    return `${contextNote}### CPU Scheduling Summary\n\n1. **FCFS (First-Come, First-Served)**: Non-preemptive, simple, but suffers from the *convoy effect*.\n2. **SJF (Shortest Job First)**: Minimizes average waiting time for known CPU bursts; can cause starvation for longer jobs.\n3. **Round Robin (RR)**: Preemptive scheduling using a fixed time quantum. Prevents starvation and balances interactive responsiveness.`;
-  }
-  if (q.includes('banker')) {
-    return `${contextNote}### Banker's Algorithm (Deadlock Avoidance)\n\nDeveloped by Edsger Dijkstra, the Banker's algorithm evaluates whether granting a resource request leaves the system in a **Safe State**.\n\n- **Safe State**: There exists at least one sequence $\\langle P_1, P_2, \\dots, P_n \\rangle$ such that every process can finish using available resources plus resources currently held by preceding processes.\n- **Data Structures**: Vectors \`Available\`, matrices \`Max\`, \`Allocation\`, and \`Need = Max - Allocation\`.\n- If simulated allocation keeps the state safe, the request is granted; otherwise the process must wait.`;
-  }
-  if (q.includes('quiz')) {
-    return `${contextNote}You can generate practice quizzes directly from Assessment. Choose your source (Topic, Subject, Knowledge Document, or Weak Topics) to test your recall.`;
-  }
-  if (q.includes('summary') || q.includes('summarize')) {
-    return `${contextNote}A concise study summary isolates: (1) core definitions, (2) essential mechanisms, (3) comparative trade-offs, and (4) high-frequency exam pitfalls.`;
-  }
-  return `${contextNote}Here is a structured study breakdown for "${message}":\n\n1. **Core Concept**: Clarify what this term means in your curriculum.\n2. **Mechanism & Examples**: How it operates step-by-step.\n3. **Common Pitfalls**: Where students typically lose marks in exams.\n4. **Next Practice**: Test yourself with a 5-question quiz in Assessment.`;
 }
 
 export { API_BASE };

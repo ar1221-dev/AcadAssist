@@ -19,9 +19,14 @@ class DocumentResponse(BaseModel):
     title: str
     description: str | None = None
     storage_path: str
+    visibility: str = "private"
+    checksum: str | None = None
+    size_bytes: int = 0
     status: str
+    processing_error: str | None = None
     uploaded_at: datetime
     processed_at: datetime | None = None
+    updated_at: datetime | None = None
 
 
 class DocumentListResponse(BaseModel):

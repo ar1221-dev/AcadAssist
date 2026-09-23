@@ -173,37 +173,37 @@ export interface ChatMessage {
 // ─── SAMPLE USER PROFILE (DEMO STUDENT) ───────────────────────────────────────
 
 export const USER_PROFILE: UserProfile = {
-  name: 'Demo Student',
-  fullName: 'Demo Student',
+  name: 'Student',
+  fullName: 'AcadAssist Student',
   role: 'Undergraduate Student',
   field: 'Computer Science & Engineering',
   academicLevel: 'Undergraduate Degree Program',
-  email: 'student.demo@acadassist.local',
+  email: '',
   location: 'University Campus',
-  memberSince: 'Aug 2026',
-  bio: 'Sample workspace showcasing AcadAssist. Managing course documents, solving daily quizzes, and tracking revision progress for upcoming exams.',
-  tags: ['Operating Systems', 'Computer Networks', 'Database Systems', 'Algorithms', 'Machine Learning'],
-  quote: 'Consistent daily focus beats last-minute exam cramming.',
-  streakDays: 12,
-  streakStatus: 'Active study streak · Sample Workspace',
-  cgpa: '8.8 / 10.0 (Sample)',
-  isDemo: true,
+  memberSince: 'Recently',
+  bio: 'Personal workspace. Managing course documents, solving daily quizzes, and tracking revision progress for exams.',
+  tags: ['Operating Systems', 'Computer Networks', 'Database Systems', 'Algorithms'],
+  quote: 'Consistent daily focus beats last-minute cramming.',
+  streakDays: 0,
+  streakStatus: 'Starting streak',
+  cgpa: 'N/A',
+  isDemo: false,
 };
 
 export const STATS_SUMMARY: StatsSummary = {
-  dayStreak: 12,
-  topicsCompleted: 24,
-  hoursStudied: 28.5,
-  averageScore: 78,
-  notesLearned: 42,
-  questionsPracticed: 160,
-  totalStudyTime: 38.0,
-  overallProgress: 64,
-  notesIncrease: '↑ 12% this week',
-  questionsIncrease: '↑ 25% this week',
-  studyTimeIncrease: '↑ 15% this week',
-  progressIncrease: '↑ 8% this week',
-  isDemo: true,
+  dayStreak: 0,
+  topicsCompleted: 0,
+  hoursStudied: 0,
+  averageScore: 0,
+  notesLearned: 0,
+  questionsPracticed: 0,
+  totalStudyTime: 0,
+  overallProgress: 0,
+  notesIncrease: '0 this week',
+  questionsIncrease: '0 this week',
+  studyTimeIncrease: '0 this week',
+  progressIncrease: '0 this week',
+  isDemo: false,
 };
 
 // ─── CORE CURRICULUM SUBJECTS ────────────────────────────────────────────────
@@ -213,84 +213,79 @@ export const SUBJECTS: Subject[] = [
     id: 'os',
     name: 'Operating Systems',
     fullName: 'Operating Systems (CSE-302)',
-    documentsCount: 6,
-    progress: 61,
-    topicsCompleted: 4,
+    documentsCount: 0,
+    progress: 0,
+    topicsCompleted: 0,
     totalTopics: 6,
     color: '#315c8b',
     tag: 'OS',
     code: 'CSE-302',
     semester: 'Semester 5',
-    examDate: '2026-09-27',
     importance: 'High',
   },
   {
     id: 'cn',
     name: 'Computer Networks',
     fullName: 'Computer Networks (CSE-304)',
-    documentsCount: 5,
-    progress: 43,
-    topicsCompleted: 2,
+    documentsCount: 0,
+    progress: 0,
+    topicsCompleted: 0,
     totalTopics: 5,
     color: '#8b5a31',
     tag: 'CN',
     code: 'CSE-304',
     semester: 'Semester 5',
-    examDate: '2026-10-04',
     importance: 'High',
   },
   {
     id: 'dbms',
     name: 'Database Management Systems',
     fullName: 'Database Management Systems (CSE-305)',
-    documentsCount: 4,
-    progress: 28,
-    topicsCompleted: 2,
+    documentsCount: 0,
+    progress: 0,
+    topicsCompleted: 0,
     totalTopics: 5,
     color: '#6a4c93',
     tag: 'DBMS',
     code: 'CSE-305',
     semester: 'Semester 5',
-    examDate: '2026-10-11',
     importance: 'Medium',
   },
   {
     id: 'dsa',
     name: 'Data Structures & Algorithms',
     fullName: 'Data Structures & Algorithms (CSE-201)',
-    documentsCount: 7,
-    progress: 52,
-    topicsCompleted: 3,
+    documentsCount: 0,
+    progress: 0,
+    topicsCompleted: 0,
     totalTopics: 6,
     color: '#2d5f47',
     tag: 'DSA',
     code: 'CSE-201',
     semester: 'Semester 3',
-    examDate: '2026-10-18',
     importance: 'High',
   },
   {
     id: 'ml',
     name: 'Machine Learning',
     fullName: 'Machine Learning (CSE-401)',
-    documentsCount: 3,
-    progress: 18,
-    topicsCompleted: 1,
+    documentsCount: 0,
+    progress: 0,
+    topicsCompleted: 0,
     totalTopics: 6,
     color: '#a14b5d',
     tag: 'ML',
     code: 'CSE-401',
     semester: 'Semester 7',
-    examDate: '2026-10-25',
     importance: 'Medium',
   },
   {
     id: 'python',
     name: 'Python Programming',
     fullName: 'Python Programming (CS-101)',
-    documentsCount: 4,
-    progress: 75,
-    topicsCompleted: 4,
+    documentsCount: 0,
+    progress: 0,
+    topicsCompleted: 0,
     totalTopics: 6,
     color: '#b17b24',
     tag: 'PY',
@@ -356,62 +351,26 @@ export const TODAY_STUDY_PLAN: StudyPlanItem[] = [
   },
 ];
 
-export const PLANNER_TIMELINE_TASKS: PlannerTask[] = [
-  { id: 'pt-1', time: '08:30 AM', title: 'OS Deadlocks Review', description: 'Study resource-allocation graphs and deadlock prevention rules', subjectTag: 'OS', duration: '40 min', completed: true, type: 'study' },
-  { id: 'pt-2', time: '10:00 AM', title: 'Transport Layer Diagnostics', description: 'Complete 10 MCQs on TCP connection teardown and windowing', subjectTag: 'CN', duration: '35 min', completed: true, type: 'quiz' },
-  { id: 'pt-3', time: '11:45 AM', title: 'DBMS Normalization Problem Set', description: 'Decompose relations into 3NF and BCNF without losing dependencies', subjectTag: 'DBMS', duration: '45 min', completed: false, type: 'practice' },
-  { id: 'pt-4', time: '01:00 PM', title: 'Lunch & Break', description: 'Step away from screen, hydration and brief walk', subjectTag: 'Break', duration: '45 min', completed: true, type: 'break' },
-  { id: 'pt-5', time: '02:30 PM', title: 'Graph BFS/DFS Practice', description: 'Implement cycle detection in directed graphs using recursion stack', subjectTag: 'DSA', duration: '50 min', completed: false, type: 'study' },
-  { id: 'pt-6', time: '04:30 PM', title: 'Regression Cost Functions', description: 'Understand Mean Squared Error (MSE) and gradient descent updates', subjectTag: 'ML', duration: '35 min', completed: false, type: 'study' },
-];
+export const PLANNER_TIMELINE_TASKS: PlannerTask[] = [];
 
-export const UPCOMING_EXAMS: Exam[] = [
-  { id: 'exam-1', subject: 'Operating Systems', examName: 'Operating Systems Midterm Exam', daysLeft: 5, dateStr: '27 Sep 2026', urgency: 'urgent', icon: 'book-open' },
-  { id: 'exam-2', subject: 'Computer Networks', examName: 'Computer Networks Mid-Term Assessment', daysLeft: 12, dateStr: '04 Oct 2026', urgency: 'high', icon: 'share-2' },
-  { id: 'exam-3', subject: 'Database Management Systems', examName: 'DBMS Semester Comprehensive', daysLeft: 19, dateStr: '11 Oct 2026', urgency: 'medium', icon: 'database' },
-  { id: 'exam-4', subject: 'Data Structures & Algorithms', examName: 'DSA Practical Lab Defense', daysLeft: 26, dateStr: '18 Oct 2026', urgency: 'normal', icon: 'shield' },
-];
+export const UPCOMING_EXAMS: Exam[] = [];
 
-export const UPCOMING_DEADLINES: Deadline[] = [
-  { title: 'OS Deadlock Coffman Problem Sheet', daysLeft: '2 days left', dateStr: '24 Sep 2026', urgency: 'urgent' },
-  { title: 'Operating Systems Midterm Exam', daysLeft: '5 days left', dateStr: '27 Sep 2026', urgency: 'urgent' },
-  { title: 'Networks Socket Programming Milestone', daysLeft: '9 days left', dateStr: '01 Oct 2026', urgency: 'high' },
-  { title: 'Computer Networks Mid-Term Assessment', daysLeft: '12 days left', dateStr: '04 Oct 2026', urgency: 'high' },
-  { title: 'DBMS Relational Normalization Quiz', daysLeft: '19 days left', dateStr: '11 Oct 2026', urgency: 'medium' },
-];
+export const UPCOMING_DEADLINES: Deadline[] = [];
 
-export const KNOWLEDGE_MATERIALS: KnowledgeMaterial[] = [
-  { id: 'doc-os-deadlocks-unit3', name: 'OS_Unit3_Deadlocks_and_Prevention.pdf', subject: 'Operating Systems', type: 'PDF', size: '2.4 MB', addedOn: '18 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: true, isDemo: true },
-  { id: 'doc-cn-transport-layer', name: 'CN_Transport_Layer_TCP_UDP.docx', subject: 'Computer Networks', type: 'DOCX', size: '1.2 MB', addedOn: '16 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: true, isDemo: true },
-  { id: 'doc-dbms-relational-sql', name: 'DBMS_Relational_Algebra_and_SQL.pptx', subject: 'Database Management Systems', type: 'PPT', size: '4.8 MB', addedOn: '14 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
-  { id: 'doc-dsa-graph-traversals', name: 'DSA_Graph_Traversals_BFS_DFS.pdf', subject: 'Data Structures & Algorithms', type: 'PDF', size: '3.1 MB', addedOn: '12 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
-  { id: 'doc-ml-linear-logistic', name: 'ML_Linear_and_Logistic_Regression.pdf', subject: 'Machine Learning', type: 'PDF', size: '2.8 MB', addedOn: '09 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
-  { id: 'doc-python-oop-exceptions', name: 'Python_OOP_and_Exception_Handling.txt', subject: 'Python Programming', type: 'TXT', size: '85 KB', addedOn: '06 Sep 2026', status: 'Stored Locally · Ready for Processing', starred: false, isDemo: true },
-];
+export const KNOWLEDGE_MATERIALS: KnowledgeMaterial[] = [];
 
-export const RECENT_ACTIVITIES: Activity[] = [
-  { iconColor: '#315c8b', text: 'Completed quiz on CPU Scheduling (Score: 90%)', time: '2 hours ago', action: 'quiz' },
-  { iconColor: '#8b5a31', text: 'Uploaded CN_Transport_Layer_TCP_UDP.docx', time: '5 hours ago', action: 'upload' },
-  { iconColor: '#6a4c93', text: 'Practiced SQL normalization & BCNF — 40 minutes', time: '1 day ago', action: 'study' },
-  { iconColor: '#2d5f47', text: 'Generated AI Notes from OS Deadlocks material', time: '1 day ago', action: 'notes' },
-  { iconColor: '#a14b5d', text: 'Consulted AI Assistant on Gradient Descent convergence', time: '2 days ago', action: 'chat' },
-];
+export const RECENT_ACTIVITIES: Activity[] = [];
 
 export const ASSESSMENT_PERFORMANCE: AssessmentPerformance = {
-  averageScore: 78,
-  delta: '↑ 8% from last week',
-  questionsAttempted: 160,
-  correctAnswers: 125,
-  topicsCovered: 14,
-  isDemo: true,
+  averageScore: 0,
+  delta: 'No attempts yet',
+  questionsAttempted: 0,
+  correctAnswers: 0,
+  topicsCovered: 0,
+  isDemo: false,
 };
 
-export const RECENT_ATTEMPTS: RecentAttempt[] = [
-  { topic: 'CPU Scheduling Algorithms', difficulty: 'Medium', scoreFraction: '9 / 10', percentage: '90%', date: '21 Sep 2026', status: 'excellent' },
-  { topic: 'Deadlocks & Coffman Conditions', difficulty: 'Medium', scoreFraction: '6 / 10', percentage: '60%', date: '19 Sep 2026', status: 'average' },
-  { topic: 'Transport Layer Protocols', difficulty: 'Hard', scoreFraction: '5 / 10', percentage: '50%', date: '17 Sep 2026', status: 'failed' },
-  { topic: 'SQL Normalization (1NF-3NF)', difficulty: 'Medium', scoreFraction: '8 / 10', percentage: '80%', date: '15 Sep 2026', status: 'passed' },
-];
+export const RECENT_ATTEMPTS: RecentAttempt[] = [];
 
 export const POPULAR_PRACTICE_SETS: PracticeSet[] = [
   { title: 'Operating Systems Core', subtitle: 'Processes, CPU Scheduling, Deadlocks, Memory Management', questionsCount: 40, type: 'Mixed', icon: 'cpu', color: '#315c8b' },
@@ -420,27 +379,17 @@ export const POPULAR_PRACTICE_SETS: PracticeSet[] = [
   { title: 'Algorithms & Complexity', subtitle: 'Asymptotic Analysis, Trees, Graphs, Sorting & Searching', questionsCount: 45, type: 'Mixed', icon: 'code', color: '#2d5f47' },
 ];
 
-export const MILESTONES: Milestone[] = [
-  { title: 'Completed 150 practice questions', date: '14 Sep 2026', completed: true },
-  { title: 'Maintained 10-day continuous study streak', date: '18 Sep 2026', completed: true },
-  { title: 'Organized 5 course documents in Knowledge library', date: '20 Sep 2026', completed: true },
-  { title: 'Target: Score >85% in Operating Systems Midterm', date: 'Target: 27 Sep 2026', completed: false },
-];
+export const MILESTONES: Milestone[] = [];
 
 export const BADGES: Badge[] = [
-  { name: 'Consistent Focus', icon: 'calendar', color: '#2d5f47', unlocked: true },
-  { name: 'Systems Scholar', icon: 'cpu', color: '#315c8b', unlocked: true },
-  { name: 'Problem Solver', icon: 'award', color: '#8b5a31', unlocked: true },
-  { name: 'Knowledge Curator', icon: 'book-open', color: '#6a4c93', unlocked: true },
+  { name: 'Consistent Focus', icon: 'calendar', color: '#2d5f47', unlocked: false },
+  { name: 'Systems Scholar', icon: 'cpu', color: '#315c8b', unlocked: false },
+  { name: 'Problem Solver', icon: 'award', color: '#8b5a31', unlocked: false },
+  { name: 'Knowledge Curator', icon: 'book-open', color: '#6a4c93', unlocked: false },
   { name: 'Exam Ready', icon: 'shield', color: '#a14b5d', unlocked: false },
 ];
 
-export const STUDY_GOALS = [
-  { id: 'g1', text: 'Revise Operating Systems Unit 3 (Deadlocks & Memory)', completed: true },
-  { id: 'g2', text: 'Solve 15 practice questions on TCP three-way handshake', completed: true },
-  { id: 'g3', text: 'Master BCNF decomposition without information loss', completed: false },
-  { id: 'g4', text: 'Complete mock assessment before Operating Systems exam', completed: false },
-];
+export const STUDY_GOALS: Array<{ id: string; text: string; completed: boolean }> = [];
 
 export const HELP_CATEGORIES: HelpCategory[] = [
   { title: 'Knowledge Base', description: 'Upload notes, organize subject files, and manage your library.', icon: 'book-open', color: '#2d5f47' },

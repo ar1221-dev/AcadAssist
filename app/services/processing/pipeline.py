@@ -82,6 +82,7 @@ class DocumentProcessingService:
             # First remove any prior chunks if re-processing
             db.query(Chunk).filter(Chunk.document_id == doc.document_id).delete()
             for chunk, vec in zip(chunks, vectors):
+                chunk.visibility = getattr(doc, "visibility", "private")
                 chunk.content_vector = json.dumps(vec)
                 db.add(chunk)
 
@@ -90,6 +91,7 @@ class DocumentProcessingService:
 
             # 8. Mark document as processed
             doc.status = "processed"
+            doc.processing_error = None
             doc.processed_at = datetime.now(timezone.utc)
             db.commit()
             db.refresh(doc)
@@ -99,6 +101,7 @@ class DocumentProcessingService:
         except Exception as e:
             logger.error(f"Processing failed for document {doc.document_id}: {e}", exc_info=True)
             doc.status = "failed"
+            doc.processing_error = str(e)
             db.commit()
             db.refresh(doc)
             raise e

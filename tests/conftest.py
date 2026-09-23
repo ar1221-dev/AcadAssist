@@ -136,3 +136,24 @@ def sample_academic_entities(db_session):
         "subject_os": subject_os,
         "subject_db": subject_db,
     }
+
+
+@pytest.fixture
+def auth_headers(db_session):
+    """Generate authorization headers for a given user_id, ensuring user exists in test DB."""
+    def _make(user_id: str = "user-alice-001") -> dict[str, str]:
+        user = db_session.query(User).filter(User.user_id == user_id).first()
+        if not user:
+            user = User(
+                user_id=user_id,
+                name=user_id.replace("_", " ").replace("-", " ").title(),
+                email=f"{user_id}@test.local",
+            )
+            db_session.add(user)
+            db_session.commit()
+        from app.core.security import create_access_token
+        token = create_access_token({"sub": user_id})
+        return {"Authorization": f"Bearer {token}"}
+    return _make
+
+

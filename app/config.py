@@ -67,6 +67,13 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
 
+    # Comma-separated frontend origins. Never use wildcard origins with credentials in production.
+    CORS_ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+
+    @property
+    def cors_allowed_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.CORS_ALLOWED_ORIGINS.split(",") if origin.strip()]
+
     # Database: single shared database for AcadAssist
     DATABASE_URL: str = "sqlite:///./data/acadassist.db"
 
@@ -78,22 +85,96 @@ class Settings(BaseSettings):
     def environment(self) -> str:
         return self.ENVIRONMENT
 
+    @property
+    def is_development(self) -> bool:
+        return not self.is_production()
+
+    @property
+    def azure_storage_account(self) -> str | None:
+        return self.AZURE_STORAGE_ACCOUNT
+
+    @property
+    def azure_storage_container(self) -> str:
+        return self.AZURE_STORAGE_CONTAINER
+
+    @property
+    def azure_storage_endpoint(self) -> str | None:
+        if not self.AZURE_STORAGE_ACCOUNT:
+            return None
+        if self.AZURE_STORAGE_ACCOUNT.startswith("http"):
+            return self.AZURE_STORAGE_ACCOUNT
+        return f"https://{self.AZURE_STORAGE_ACCOUNT}.blob.core.windows.net"
+
+    @property
+    def azure_search_endpoint(self) -> str | None:
+        return self.AZURE_SEARCH_ENDPOINT
+
+    @property
+    def azure_search_index(self) -> str:
+        return self.AZURE_SEARCH_INDEX or self.AZURE_SEARCH_INDEX_NAME
+
+    @property
+    def foundry_project_endpoint(self) -> str | None:
+        return self.FOUNDRY_PROJECT_ENDPOINT
+
+    @property
+    def foundry_project(self) -> str:
+        return self.FOUNDRY_PROJECT
+
+    @property
+    def foundry_model_deployment(self) -> str:
+        return self.FOUNDRY_MODEL_DEPLOYMENT
+
+    @property
+    def foundry_embedding_deployment(self) -> str:
+        return self.FOUNDRY_EMBEDDING_DEPLOYMENT
+
+    @property
+    def foundry_agent_name(self) -> str:
+        return self.FOUNDRY_AGENT_NAME
+
+    @property
+    def is_foundry_configured(self) -> bool:
+        return bool(self.FOUNDRY_PROJECT_ENDPOINT)
+
+    @property
+    def is_search_configured(self) -> bool:
+        return bool(self.AZURE_SEARCH_ENDPOINT)
+
+    @property
+    def is_storage_configured(self) -> bool:
+        return bool(self.AZURE_STORAGE_ACCOUNT or self.AZURE_STORAGE_CONNECTION_STRING)
+
     # Assessment Specific Settings (Person 3)
     assessment: AssessmentSettings = Field(default_factory=AssessmentSettings)
+
+    # Authentication & Security
+    JWT_SECRET_KEY: str | None = None
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
     # General Azure credentials (from .env.example)
     AZURE_ENDPOINT: str | None = None
     AZURE_API_KEY: str | None = None
 
-    # Azure Blob Storage Configuration (Person 2)
+    # Azure Blob Storage Configuration (Person 1 & Person 2)
+    AZURE_STORAGE_ACCOUNT: str | None = None
     AZURE_STORAGE_CONNECTION_STRING: str | None = None
     AZURE_STORAGE_CONTAINER: str = "acadassist-documents"
     STORAGE_LOCAL_DIR: str = "./data/storage"
 
-    # Azure AI Search Configuration (Person 2)
+    # Azure AI Search Configuration (Person 1 & Person 2)
     AZURE_SEARCH_ENDPOINT: str | None = None
     AZURE_SEARCH_KEY: str | None = None
     AZURE_SEARCH_INDEX_NAME: str = "acadassist-knowledge-index"
+    AZURE_SEARCH_INDEX: str = "acadassist-index"
+
+    # Microsoft Foundry & Agent Configuration (Person 1)
+    FOUNDRY_PROJECT_ENDPOINT: str | None = None
+    FOUNDRY_PROJECT: str = "acadassist-foundry"
+    FOUNDRY_MODEL_DEPLOYMENT: str = "gpt-4o"
+    FOUNDRY_EMBEDDING_DEPLOYMENT: str = "text-embedding-3-small"
+    FOUNDRY_AGENT_NAME: str = "AcadAssist"
 
     # Embedding Service Configuration (Person 2)
     AZURE_OPENAI_ENDPOINT: str | None = None
@@ -131,11 +212,24 @@ class Settings(BaseSettings):
         """Check if currently running in production environment."""
         return self.ENVIRONMENT.lower() in ("production", "prod")
 
+    def get_jwt_secret_key(self) -> str:
+        """Get the JWT secret key, strictly requiring an environment-configured key in production."""
+        if self.JWT_SECRET_KEY:
+            return self.JWT_SECRET_KEY
+        if self.is_production():
+            raise ValueError("JWT_SECRET_KEY must be provided via environment configuration in production.")
+        import secrets
+        if not hasattr(Settings, "_ephemeral_jwt_secret"):
+            Settings._ephemeral_jwt_secret = secrets.token_urlsafe(32)
+        return Settings._ephemeral_jwt_secret
+
     def validate_production_azure(self) -> None:
-        """Ensure all required Azure credentials are provided when running in production."""
+        """Ensure all required Azure credentials and security secrets are provided when running in production."""
         if not self.is_production():
             return
         missing = []
+        if not self.JWT_SECRET_KEY:
+            missing.append("JWT_SECRET_KEY")
         if not self.AZURE_STORAGE_CONNECTION_STRING:
             missing.append("AZURE_STORAGE_CONNECTION_STRING")
         if not self.AZURE_SEARCH_ENDPOINT:
@@ -144,10 +238,12 @@ class Settings(BaseSettings):
             missing.append("AZURE_SEARCH_KEY")
         if not (self.AZURE_OPENAI_API_KEY or self.OPENAI_API_KEY):
             missing.append("AZURE_OPENAI_API_KEY / OPENAI_API_KEY")
+        if "*" in self.cors_allowed_origins:
+            missing.append("CORS_ALLOWED_ORIGINS (wildcard is not allowed in production)")
 
         if missing:
             raise ValueError(
-                f"Production environment requires Azure credentials. Missing: {', '.join(missing)}"
+                f"Production environment requires security credentials. Missing: {', '.join(missing)}"
             )
 
 

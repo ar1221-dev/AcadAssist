@@ -40,7 +40,7 @@ export default function Profile() {
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="eyebrow">MY PROFILE</span>
-            <span className="soft-badge text-[.6rem]">Demo Student · Editable</span>
+            <span className="soft-badge text-[.6rem]">{user.role} · Active Profile</span>
           </div>
           <h1>{user.fullName}</h1>
           <p>
@@ -124,13 +124,13 @@ export default function Profile() {
           <div className="card p-5">
             <div className="flex justify-between items-center mb-2">
               <span className="section-kicker">STUDY STATS</span>
-              <span className="text-[.6rem] text-[var(--color-text-muted)]">Sample Metrics</span>
+              <span className="text-[.6rem] text-[var(--color-text-muted)]">Activity Metrics</span>
             </div>
             <div className="stats-mini-grid">
               <div>
                 <Flame size={18} />
                 <strong>{user.streakDays}</strong>
-                <small>day streak (demo)</small>
+                <small>day streak</small>
               </div>
               <div>
                 <GraduationCap size={18} />

@@ -7,8 +7,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp, type Note } from '../context/AppContext';
 import Modal from '../components/ui/Modal';
 import { deleteFile, getFile, saveFile } from '../services/fileStore';
+import { uploadDocument, downloadDocument } from '../services/api';
 
 type Material = ReturnType<typeof useApp>['knowledgeMaterials'][number];
+
 
 export default function Knowledge() {
   const {
@@ -93,20 +95,20 @@ export default function Knowledge() {
     }
     setBusy(true);
     try {
-      const id = crypto.randomUUID();
-      await saveFile(id, file);
+      const uploadRes = await uploadDocument(file);
       const ext = file.name.split('.').pop()?.toLowerCase();
       const material = {
-        id,
+        id: uploadRes.id,
         name: file.name,
         subject: uploadSubject,
         type: (ext === 'pptx' ? 'PPT' : ext?.toUpperCase()) as Material['type'],
         size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
         addedOn: new Date().toISOString(),
-        status: 'Stored Locally · Ready for Processing',
+        status: 'Processed · Ready',
         starred: false,
       };
       addKnowledgeMaterial(material);
+      saveFile(uploadRes.id, file).catch(() => {});
       if (ext === 'txt') {
         const text = await file.text();
         addNote({
@@ -121,7 +123,7 @@ export default function Knowledge() {
       }
       setFile(null);
       setUploadOpen(false);
-      pushToast('Material added to your Knowledge library');
+      pushToast('Material uploaded and processed securely');
     } catch (e) {
       pushToast(e instanceof Error ? e.message : 'Could not save the file', 'error');
     } finally {
@@ -131,8 +133,13 @@ export default function Knowledge() {
 
   const download = async (m: Material) => {
     try {
-      const blob = await getFile(m.id || m.name);
-      if (!blob) throw new Error('Original file is not available in this browser');
+      if (m.id) {
+        await downloadDocument(m.id, m.name);
+        pushToast('Download started');
+        return;
+      }
+      const blob = await getFile(m.name);
+      if (!blob) throw new Error('Original file is not available');
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -144,6 +151,7 @@ export default function Knowledge() {
       pushToast(e instanceof Error ? e.message : 'Download failed', 'error');
     }
   };
+
 
   const openPreview = async (m: Material) => {
     setPreview(m);

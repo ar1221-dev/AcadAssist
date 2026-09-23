@@ -15,15 +15,16 @@ export default function Login() {
   const [show,setShow]=useState(false);
   const [error,setError]=useState('');
 
-  const submit=(e:FormEvent)=>{
+  const submit=async (e:FormEvent)=>{
     e.preventDefault(); setError('');
     if(!email.trim() || !password){setError('Enter your email and password.');return;}
     try {
-      const account=signIn(email,password);
+      const account=await signIn(email,password);
       updateUser({name:account.name,email:account.email});
       navigate(next,{replace:true});
     } catch(err) { setError(err instanceof Error?err.message:'Unable to sign in.'); }
   };
+
 
   return <div className="auth-page"><div className="auth-side"><Link to="/" className="landing-brand"><span>A</span><strong>AcadAssist</strong></Link><div><div className="eyebrow">YOUR LEARNING WORKSPACE</div><h1>Return to a study system that keeps everything connected.</h1><p>Pick up your courses, knowledge, assessments and plans from one place.</p></div><div className="auth-side-note">“Small sessions.<br/>Compounding progress.”</div></div>
     <div className="auth-panel"><Link to="/" className="auth-back"><ArrowLeft size={15}/>Back to home</Link><div className="auth-form-wrap"><div className="eyebrow">WELCOME BACK</div><h2>Sign in to AcadAssist</h2><p className="muted">Use the local account you created on this device.</p>

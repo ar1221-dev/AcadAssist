@@ -1,13 +1,13 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import * as auth from '../services/auth';
 import type { LocalAccount } from '../services/auth';
 
 interface AuthContextValue {
   account: LocalAccount | null;
   isAuthenticated: boolean;
-  signIn: (email: string, password: string) => LocalAccount;
-  signOut: () => void;
-  signUp: (name: string, email: string, password: string) => LocalAccount;
+  signIn: (email: string, password: string) => Promise<LocalAccount>;
+  signOut: () => Promise<void>;
+  signUp: (name: string, email: string, password: string) => Promise<LocalAccount>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -15,21 +15,38 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<LocalAccount | null>(() => auth.getSession());
 
-  const signIn = useCallback((email: string, password: string) => {
-    const next = auth.login(email, password);
+  // Verify and refresh session on mount
+  useEffect(() => {
+    auth.getCurrentUser().then(user => {
+      if (user) {
+        setAccount(user);
+      } else if (!auth.getToken()) {
+        setAccount(null);
+      }
+    });
+  }, []);
+
+  const signIn = useCallback(async (email: string, password: string) => {
+    const next = await auth.login(email, password);
     setAccount(next);
     return next;
   }, []);
 
-  const signOut = useCallback(() => {
-    auth.logout();
+  const signOut = useCallback(async () => {
+    await auth.logout();
     setAccount(null);
   }, []);
 
-  const signUp = useCallback((name: string, email: string, password: string) => auth.createAccount(name, email, password), []);
+  const signUp = useCallback(async (name: string, email: string, password: string) => {
+    return await auth.createAccount(name, email, password);
+  }, []);
 
   const value = useMemo(() => ({
-    account, isAuthenticated: !!account, signIn, signOut, signUp,
+    account,
+    isAuthenticated: !!account,
+    signIn,
+    signOut,
+    signUp,
   }), [account, signIn, signOut, signUp]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

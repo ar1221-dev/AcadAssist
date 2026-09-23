@@ -12,28 +12,27 @@ import Modal from '../components/ui/Modal';
 import { useApp } from '../context/AppContext';
 
 export default function Progress() {
-  const { studyGoals, toggleGoal, user, subjects, courses, quizzes, events, settings } = useApp();
+  const {
+    studyGoals, toggleGoal, user, subjects, courses, quizzes, events, settings,
+    performanceMetrics, quizAttempts
+  } = useApp();
   const navigate = useNavigate();
   const [goals, setGoals] = useState(false);
 
   const active = subjects.filter(s => courses.some(c => c.enrolled && c.name === s.name));
   const overall = Math.round(active.reduce((a, s) => a + s.progress, 0) / (active.length || 1));
   const completedQuizzes = quizzes.filter(q => q.score !== undefined);
-  const avgScore = completedQuizzes.length
+  const avgScore = performanceMetrics && performanceMetrics.totalQuestionsAttempted > 0
+    ? Math.round(performanceMetrics.overallAccuracy)
+    : completedQuizzes.length
     ? Math.round(completedQuizzes.reduce((a, q) => a + (q.score || 0), 0) / completedQuizzes.length)
-    : 78; // Default sample average if no quizzes taken yet
+    : 0;
   const completedEvents = events.filter(e => e.completed).length;
   const totalEvents = events.length;
 
   const weekly = useMemo(() => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const map = days.map(day => ({ day, hours: 0 }));
-    // Baseline sample activity hours
-    map[1].hours = 3.5;
-    map[2].hours = 4.0;
-    map[3].hours = 2.5;
-    map[4].hours = 5.0;
-    map[5].hours = 4.5;
     events
       .filter(e => e.type === 'Study Session' && e.completed)
       .forEach(e => {
@@ -52,9 +51,9 @@ export default function Progress() {
   }, [overall]);
 
   const activity = [
-    { name: 'Practice Quizzes', value: completedQuizzes.length || 4 },
-    { name: 'Planner Sessions', value: completedEvents || 6 },
-    { name: 'Goals Completed', value: studyGoals.filter(g => g.completed).length || 2 },
+    { name: 'Practice Quizzes', value: quizAttempts.length || completedQuizzes.length },
+    { name: 'Planner Sessions', value: completedEvents },
+    { name: 'Goals Completed', value: studyGoals.filter(g => g.completed).length },
   ];
 
   return (
@@ -69,13 +68,13 @@ export default function Progress() {
         subtitle="Curriculum analytics driven by the courses, practice quizzes, and planner activity in your workspace."
       />
 
-      {/* Metrics Row (Clearly labeled sample/workspace metrics) */}
+      {/* Metrics Row (Workspace Metrics) */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <Stat value={`${overall}%`} label="Overall progress" sublabel="Sample Average" />
+        <Stat value={`${overall}%`} label="Overall progress" sublabel="Workspace Average" />
         <Stat value={String(active.length)} label="Active subjects" sublabel="Curriculum" />
-        <Stat value={`${avgScore}%`} label="Quiz average" sublabel="Diagnostic Sample" />
+        <Stat value={`${avgScore}%`} label="Quiz average" sublabel="Diagnostic Score" />
         <Stat value={`${completedEvents}/${totalEvents}`} label="Planner events done" sublabel="Scheduled" />
-        <Stat value={`${user.streakDays} days`} label="Day streak" sublabel="Sample Data" />
+        <Stat value={`${user.streakDays} days`} label="Day streak" sublabel="Study Activity" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_280px] gap-6">

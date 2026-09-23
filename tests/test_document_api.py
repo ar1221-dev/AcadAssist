@@ -4,11 +4,12 @@ import io
 from app.models.document import Document
 
 
-def test_document_lifecycle(client, db_session, sample_academic_entities):
+def test_document_lifecycle(client, db_session, sample_academic_entities, auth_headers):
     entities = sample_academic_entities
     user_id = entities["user_a"].user_id
     course_id = entities["course"].course_id
     subject_id = entities["subject_os"].subject_id
+    headers = auth_headers(user_id)
 
     # 1. Upload TXT document
     text_content = (
@@ -30,6 +31,7 @@ def test_document_lifecycle(client, db_session, sample_academic_entities):
             "description": "Operating Systems Deadlocks and Safety",
         },
         files={"file": ("OS_Unit_3.txt", file_bytes, "text/plain")},
+        headers=headers,
     )
 
     assert upload_resp.status_code == 201
@@ -40,19 +42,20 @@ def test_document_lifecycle(client, db_session, sample_academic_entities):
     assert doc_data["processed_at"] is None
 
     # 2. List documents
-    list_resp = client.get(f"/api/documents?user_id={user_id}")
+    list_resp = client.get(f"/api/documents?user_id={user_id}", headers=headers)
+
     assert list_resp.status_code == 200
     list_data = list_resp.json()
     assert list_data["total"] >= 1
     assert any(d["document_id"] == doc_id for d in list_data["documents"])
 
     # 3. Get document details
-    get_resp = client.get(f"/api/documents/{doc_id}?user_id={user_id}")
+    get_resp = client.get(f"/api/documents/{doc_id}?user_id={user_id}", headers=headers)
     assert get_resp.status_code == 200
     assert get_resp.json()["document_id"] == doc_id
 
     # 4. Process document
-    proc_resp = client.post(f"/api/documents/{doc_id}/process?user_id={user_id}")
+    proc_resp = client.post(f"/api/documents/{doc_id}/process?user_id={user_id}", headers=headers)
     assert proc_resp.status_code == 200
     proc_data = proc_resp.json()
     assert proc_data["status"] == "processed"
@@ -68,6 +71,7 @@ def test_document_lifecycle(client, db_session, sample_academic_entities):
         sum_resp = client.post(
             f"/api/documents/{doc_id}/summarize?user_id={user_id}",
             json={"mode": mode},
+            headers=headers,
         )
         assert sum_resp.status_code == 200
         sum_data = sum_resp.json()
@@ -76,10 +80,11 @@ def test_document_lifecycle(client, db_session, sample_academic_entities):
         assert len(sum_data["summary"]) > 0
 
     # 6. Delete document
-    del_resp = client.delete(f"/api/documents/{doc_id}?user_id={user_id}")
+    del_resp = client.delete(f"/api/documents/{doc_id}?user_id={user_id}", headers=headers)
     assert del_resp.status_code == 200
     assert del_resp.json()["status"] == "success"
 
     # Verify deleted
-    get_after_del = client.get(f"/api/documents/{doc_id}?user_id={user_id}")
+    get_after_del = client.get(f"/api/documents/{doc_id}?user_id={user_id}", headers=headers)
     assert get_after_del.status_code == 404
+

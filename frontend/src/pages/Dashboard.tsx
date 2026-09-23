@@ -1,10 +1,10 @@
-import { useState, type CSSProperties } from 'react';
+import { useState, useMemo, type CSSProperties } from 'react';
 import {
   ArrowRight, CalendarDays, Check, FileText, Plus, Sparkles, Target, BookOpen,
   ChevronLeft, ChevronRight, AlertTriangle, Clock3, Flame, FileQuestion
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useApp, type CalendarEvent, UPCOMING_EXAMS } from '../context/AppContext';
+import { useApp, type CalendarEvent } from '../context/AppContext';
 import Modal from '../components/ui/Modal';
 
 const iso = (d: Date) =>
@@ -13,7 +13,8 @@ const iso = (d: Date) =>
 export default function Dashboard() {
   const {
     user, todayPlan, togglePlanItem, courses, events, subjects, addEvent,
-    pushToast, weakTopics, knowledgeMaterials
+    pushToast, weakTopics, knowledgeMaterials, upcomingExams, performanceMetrics,
+    studyRecommendation
   } = useApp();
   const navigate = useNavigate();
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -36,7 +37,34 @@ export default function Dashboard() {
   const daysInMonth = new Date(day.getFullYear(), day.getMonth() + 1, 0).getDate();
   const firstDayIndex = new Date(day.getFullYear(), day.getMonth(), 1).getDay();
 
-  const nextExam = UPCOMING_EXAMS[0];
+  const nextExam = useMemo(() => {
+    const calendarExam = events
+      .filter(e => e.type === 'Exam' && e.date >= iso(new Date()))
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+
+    const backendExam = upcomingExams && upcomingExams.length > 0 ? upcomingExams[0] : null;
+
+    if (backendExam) {
+      const nowMs = new Date().getTime();
+      return {
+        examName: backendExam.title,
+        subject: backendExam.subjectId || 'Academic Subject',
+        daysLeft: backendExam.daysUntilExam ?? Math.max(0, Math.ceil((new Date(backendExam.examDate).getTime() - nowMs) / (1000 * 60 * 60 * 24))),
+        dateStr: new Date(backendExam.examDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+      };
+    }
+    if (calendarExam) {
+      const nowMs = new Date().getTime();
+      return {
+        examName: calendarExam.title,
+        subject: calendarExam.subject || 'Academic Subject',
+        daysLeft: Math.max(0, Math.ceil((new Date(calendarExam.date + 'T00:00:00').getTime() - nowMs) / (1000 * 60 * 60 * 24))),
+        dateStr: new Date(calendarExam.date + 'T00:00:00').toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }),
+      };
+    }
+    return null;
+  }, [events, upcomingExams]);
+
   const recommendation = important[0] || subjects[0];
 
   const focus = () => {
@@ -68,7 +96,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 mb-1">
             <span className="eyebrow">STUDY COMMAND CENTER</span>
             <span className="soft-badge" style={{ fontSize: '0.62rem', padding: '2px 8px' }}>
-              Sample Workspace · Integration Ready
+              Personal Workspace
             </span>
           </div>
           <h1>
@@ -102,7 +130,7 @@ export default function Dashboard() {
                   <p className="muted text-xs">Across {enrolled.length} enrolled subjects</p>
                 </div>
                 <span className="soft-badge flex items-center gap-1">
-                  <Flame size={12} className="text-orange-500" /> {user.streakDays}d streak (Demo)
+                  <Flame size={12} className="text-orange-500" /> {user.streakDays}d streak
                 </span>
               </div>
               <div className="progress-wheel" style={{ '--progress': `${overall}%` } as CSSProperties}>
@@ -124,36 +152,46 @@ export default function Dashboard() {
               <div className="section-title-row">
                 <div>
                   <div className="section-kicker">TODAY'S STUDY FOCUS</div>
-                  <h3>3 tasks · 2h 15m planned</h3>
+                  <h3>
+                    {todayPlan.length > 0
+                      ? `${todayPlan.length} task${todayPlan.length === 1 ? '' : 's'} · ${todayPlan.reduce((acc, t) => acc + (parseInt(t.duration || '0', 10) || 45), 0)}m planned`
+                      : 'No tasks scheduled today'}
+                  </h3>
                 </div>
                 <span className="soft-badge">
                   {doneTasks}/{todayPlan.length} done
                 </span>
               </div>
               <div className="space-y-1 my-2">
-                {todayPlan.slice(0, 4).map(x => (
-                  <div className="focus-item" key={x.id}>
-                    <button
-                      className={`check ${x.status === 'completed' ? 'done' : ''}`}
-                      onClick={() => togglePlanItem(x.id)}
-                      aria-label="Toggle task completion"
-                    >
-                      {x.status === 'completed' && <Check size={13} />}
-                    </button>
-                    <div>
-                      <b>{x.title}</b>
-                      <small>
-                        {x.subject} · {x.time} ({x.duration})
-                      </small>
-                    </div>
-                    <button
-                      className="mini-btn"
-                      onClick={() => navigate(`/planner?task=${encodeURIComponent(x.title)}`)}
-                    >
-                      Open
-                    </button>
+                {todayPlan.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-[var(--color-text-muted)]">
+                    No study tasks scheduled for today. Generate a study plan to get started.
                   </div>
-                ))}
+                ) : (
+                  todayPlan.slice(0, 4).map(x => (
+                    <div className="focus-item" key={x.id}>
+                      <button
+                        className={`check ${x.status === 'completed' ? 'done' : ''}`}
+                        onClick={() => togglePlanItem(x.id)}
+                        aria-label="Toggle task completion"
+                      >
+                        {x.status === 'completed' && <Check size={13} />}
+                      </button>
+                      <div>
+                        <b>{x.title}</b>
+                        <small>
+                          {x.subject} · {x.time} ({x.duration})
+                        </small>
+                      </div>
+                      <button
+                        className="mini-btn"
+                        onClick={() => navigate(`/planner?task=${encodeURIComponent(x.title)}`)}
+                      >
+                        Open
+                      </button>
+                    </div>
+                  ))
+                )}
               </div>
               <button className="full-btn" onClick={() => navigate('/planner')}>
                 <Clock3 size={14} /> Open full study planner <ArrowRight size={14} />
@@ -202,7 +240,7 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <span className="section-kicker">ACADEMIC DIAGNOSTICS</span>
                   <span className="text-[.62rem] text-[var(--color-text-muted)] font-medium">
-                    (Demo Intelligence Service)
+                    (Diagnostic Intelligence)
                   </span>
                 </div>
                 <h2 className="text-base font-bold">Identified Weak Topics</h2>
@@ -212,39 +250,46 @@ export default function Dashboard() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              {weakTopics.slice(0, 3).map(wt => (
-                <div key={wt.id} className="card p-3.5 flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start mb-1.5">
-                      <span className="text-[.65rem] font-bold text-[var(--color-text-muted)] uppercase">
-                        {wt.subject}
-                      </span>
-                      <span className="text-xs font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md">
-                        {wt.accuracyScore}% score
-                      </span>
+            {weakTopics.length === 0 ? (
+              <div className="card p-5 text-center text-xs text-[var(--color-text-muted)]">
+                No weak topics detected yet. Complete practice quizzes in Assessment to identify focus areas.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {weakTopics.slice(0, 3).map(wt => (
+                  <div key={wt.id} className="card p-3.5 flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start mb-1.5">
+                        <span className="text-[.65rem] font-bold text-[var(--color-text-muted)] uppercase">
+                          {wt.subject}
+                        </span>
+                        <span className="text-xs font-extrabold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/40 px-2 py-0.5 rounded-md">
+                          {wt.accuracyScore}% score
+                        </span>
+                      </div>
+                      <b className="text-xs text-[var(--color-text-dark)] block leading-snug">{wt.topic}</b>
+                      <p className="text-[.68rem] text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
+                        {wt.recommendedAction}
+                      </p>
                     </div>
-                    <b className="text-xs text-[var(--color-text-dark)] block leading-snug">{wt.topic}</b>
-                    <p className="text-[.68rem] text-[var(--color-text-muted)] mt-1.5 leading-relaxed">
-                      {wt.recommendedAction}
-                    </p>
+                    <button
+                      className="btn secondary w-full text-xs mt-3"
+                      onClick={() =>
+                        navigate(
+                          `/assessment?source=Topic&material=${encodeURIComponent(
+                            wt.topic.split(' ')[0]
+                          )}&subject=${encodeURIComponent(wt.subject)}`
+                        )
+                      }
+                    >
+                      <Target size={13} /> Practice this topic
+                    </button>
                   </div>
-                  <button
-                    className="btn secondary w-full text-xs mt-3"
-                    onClick={() =>
-                      navigate(
-                        `/assessment?source=Topic&material=${encodeURIComponent(
-                          wt.topic.split(' ')[0]
-                        )}&subject=${encodeURIComponent(wt.subject)}`
-                      )
-                    }
-                  >
-                    <Target size={13} /> Practice this topic
-                  </button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
+
 
           {/* Important Subjects */}
           <div>
@@ -439,8 +484,12 @@ export default function Dashboard() {
             <div className="section-kicker">AI STUDY RECOMMENDATION</div>
             <h3>What should you study next?</h3>
             <p>
-              {recommendation
-                ? `Prioritize ${recommendation.name}: focus on Deadlocks & Coffman Conditions ahead of the upcoming exam in 5 days.`
+              {studyRecommendation
+                ? `Prioritize ${studyRecommendation.subjectName || 'Current Subject'}: ${studyRecommendation.reason}`
+                : weakTopics.length > 0
+                ? `Prioritize ${weakTopics[0].subject}: focus on ${weakTopics[0].topic} (${weakTopics[0].accuracyScore}% accuracy). ${weakTopics[0].recommendedAction}`
+                : recommendation
+                ? `Start with ${recommendation.name}: complete a topic module or take a practice quiz to generate personalized diagnostic focus.`
                 : 'Enroll in courses to generate tailored study recommendations.'}
             </p>
             <div className="space-y-2 mt-3">
@@ -464,14 +513,28 @@ export default function Dashboard() {
           <div className="card p-4">
             <div className="flex justify-between items-center mb-2">
               <span className="section-kicker">PERFORMANCE SNAPSHOT</span>
-              <span className="text-[.62rem] text-[var(--color-text-muted)]">Sample Metrics</span>
+              <span className="text-[.62rem] text-[var(--color-text-muted)]">
+                {performanceMetrics && performanceMetrics.totalQuestionsAttempted > 0 ? 'Diagnostic Accuracy' : 'Live Workspace'}
+              </span>
             </div>
             <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-2xl font-black text-[var(--color-text-dark)]">78%</span>
-              <span className="text-xs text-green-600 font-bold">↑ 8% this week</span>
+              <span className="text-2xl font-black text-[var(--color-text-dark)]">
+                {performanceMetrics && performanceMetrics.totalQuestionsAttempted > 0
+                  ? `${Math.round(performanceMetrics.overallAccuracy)}%`
+                  : '0%'}
+              </span>
+              {performanceMetrics && performanceMetrics.totalQuestionsAttempted > 0 ? (
+                <span className="text-xs text-green-600 font-bold">
+                  {performanceMetrics.totalCorrect}/{performanceMetrics.totalQuestionsAttempted} correct
+                </span>
+              ) : (
+                <span className="text-xs text-[var(--color-text-muted)] font-medium">No attempts yet</span>
+              )}
             </div>
             <p className="text-xs text-[var(--color-text-muted)] mb-3">
-              160 practice questions solved across Operating Systems, Networks, and Databases.
+              {performanceMetrics && performanceMetrics.totalQuestionsAttempted > 0
+                ? `${performanceMetrics.totalQuestionsAttempted} practice questions solved across ${performanceMetrics.attemptCount} quiz attempt${performanceMetrics.attemptCount === 1 ? '' : 's'}.`
+                : 'Solve practice questions in Assessment Studio to generate diagnostic mastery and performance trends.'}
             </p>
             <button className="full-btn" onClick={() => navigate('/assessment')}>
               <Target size={14} /> Open Assessment Studio
